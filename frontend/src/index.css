@@ -1,0 +1,182 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 217 91% 48%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 214 32% 93%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 214 32% 93%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 48%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 83% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 83% 46%;
+  }
+
+  .dark {
+    /* Cor base inspirada no Cursor (#1e1e1e) - HSL: 0 0% 12% */
+    --background: 0 0% 12%;
+    --foreground: 0 0% 95%;
+
+    /* Cards com fundo ligeiramente mais claro */
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 95%;
+
+    /* Popover com fundo similar aos cards */
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Azul mais suave e moderno */
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 12%;
+
+    /* Secundário com tom azulado suave */
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    /* Muted com tom mais neutro */
+    --muted: 220 10% 20%;
+    --muted-foreground: 0 0% 70%;
+
+    /* Accent com tom azulado */
+    --accent: 220 15% 18%;
+    --accent-foreground: 0 0% 95%;
+
+    /* Destructive mais suave */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    /* Bordas e inputs com tom neutro */
+    --border: 220 10% 20%;
+    --input: 220 10% 20%;
+    --ring: 210 100% 60%;
+
+    /* Sidebar no modo escuro */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 217 83% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 222 30% 18%;
+    --sidebar-ring: 217 83% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Melhorias específicas para o modo escuro */
+  .dark {
+    /* Scrollbar personalizada para o modo escuro */
+    scrollbar-color: hsl(220 10% 30%) transparent;
+  }
+
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(220 10% 30%);
+    border-radius: 4px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(220 10% 40%);
+  }
+
+  /* Melhorias para seleção de texto no modo escuro */
+  .dark ::selection {
+    background: hsl(210 100% 60% / 0.3);
+    color: hsl(0 0% 95%);
+  }
+
+  /* Melhorias para focus no modo escuro */
+  .dark *:focus-visible {
+    outline-color: hsl(210 100% 60%);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  /* Utilitários específicos para o modo escuro */
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Gradientes sutis para o modo escuro */
+  .dark .bg-gradient-subtle {
+    background: linear-gradient(135deg, hsl(0 0% 12%) 0%, hsl(0 0% 15%) 100%);
+  }
+
+  .dark .bg-gradient-card {
+    background: linear-gradient(135deg, hsl(0 0% 15%) 0%, hsl(0 0% 18%) 100%);
+  }
+
+  /* Sombras personalizadas para o modo escuro */
+  .dark .shadow-elegant {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  .dark .shadow-soft {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}

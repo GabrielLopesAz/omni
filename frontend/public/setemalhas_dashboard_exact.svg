@@ -1,0 +1,335 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 920" width="1440" height="920" style="background:#f8fafc; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <!-- Sidebar -->
+  <rect x="0" y="0" width="220" height="920" fill="#0f172a"/>
+  
+  <!-- Logo Sete Malhas Sidebar -->
+  <g transform="translate(18, 20)">
+    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="32" y="16" fill="#ffffff" font-size="16" font-weight="800">Sete Malhas</text>
+  </g>
+
+  <!-- Sidebar Nav Items -->
+  <!-- Active Dashboard -->
+  <rect x="12" y="65" width="196" height="40" rx="10" fill="#003D9B"/>
+  <rect x="12" y="65" width="4" height="40" rx="2" fill="#38bdf8"/>
+  <path d="M30 85h6v-12h-6v12zm8 0h6v-16h-6v16zm8 0h6v-8h-6v8z" fill="#ffffff"/>
+  <text x="60" y="90" fill="#ffffff" font-size="13" font-weight="700">Dashboard</text>
+
+  <!-- Nav Item: Materia Prima -->
+  <g transform="translate(30, 125)">
+    <circle cx="6" cy="6" r="5" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Matéria Prima</text>
+  </g>
+  <!-- Nav Item: Produtos -->
+  <g transform="translate(30, 165)">
+    <rect x="2" y="2" width="10" height="10" rx="2" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Produtos</text>
+  </g>
+  <!-- Nav Item: Terceiros -->
+  <g transform="translate(30, 205)">
+    <circle cx="7" cy="4" r="3" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <path d="M2 13c0-3 3-4 5-4s5 1 5 4" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Terceiros</text>
+  </g>
+  <!-- Nav Item: Fichas -->
+  <g transform="translate(30, 245)">
+    <path d="M3 2h8l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Fichas</text>
+  </g>
+  <!-- Nav Item: Relatorios -->
+  <g transform="translate(30, 285)">
+    <path d="M2 12l4-4 4 4 6-6" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Relatórios</text>
+  </g>
+  <!-- Nav Item: Fechamento Semanal -->
+  <g transform="translate(30, 325)">
+    <rect x="2" y="2" width="11" height="11" rx="2" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <path d="M5 7l2 2 4-4" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Fechamento Semanal</text>
+  </g>
+  <!-- Nav Item: Configurações -->
+  <g transform="translate(30, 365)">
+    <circle cx="7" cy="7" r="5" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <text x="30" y="10" fill="#94a3b8" font-size="13" font-weight="500">Configurações</text>
+  </g>
+
+  <!-- Top Bar Container -->
+  <g transform="translate(240, 15)">
+    <rect x="0" y="0" width="210" height="24" rx="12" fill="#003D9B" fill-opacity="0.08"/>
+    <text x="12" y="16" fill="#003D9B" font-size="11" font-weight="600">Sete Malhas • Gestão &amp; Produção</text>
+
+    <!-- Top icons right -->
+    <g transform="translate(1120, 0)">
+      <circle cx="12" cy="12" r="14" fill="#ffffff" stroke="#e2e8f0"/>
+      <path d="M12 7v10M7 12h10" stroke="#64748b" stroke-width="1.5"/>
+      <circle cx="48" cy="12" r="14" fill="#003D9B"/>
+      <text x="44" y="16" fill="#ffffff" font-size="12" font-weight="700">U</text>
+    </g>
+  </g>
+
+  <!-- Header Main -->
+  <g transform="translate(240, 55)">
+    <text x="0" y="24" fill="#0f172a" font-size="24" font-weight="800">Dashboard de Produção</text>
+    <rect x="270" y="6" width="150" height="24" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="282" y="22" fill="#1d4ed8" font-size="11" font-weight="600">Mês Atual: Julho de 2026</text>
+    <text x="0" y="44" fill="#64748b" font-size="12">Métricas consolidadas de produção para Julho de 2026 em tempo real</text>
+
+    <!-- Refresh button -->
+    <rect x="1060" y="8" width="120" height="32" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="1080" y="29" fill="#334155" font-size="11" font-weight="600">Atualizar Dados</text>
+  </g>
+
+  <!-- 5 Top KPI Cards -->
+  <g transform="translate(240, 115)">
+    <!-- Card 1: Peças Cortadas -->
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="220" height="85" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <rect x="0" y="0" width="4" height="85" rx="2" fill="#003D9B"/>
+      <text x="16" y="22" fill="#003D9B" font-size="10" font-weight="700" letter-spacing="0.5">PEÇAS CORTADAS (JULHO)</text>
+      <text x="16" y="52" fill="#0f172a" font-size="22" font-weight="800">12.450</text>
+      <text x="100" y="52" fill="#64748b" font-size="11">un.</text>
+      <rect x="175" y="15" width="30" height="30" rx="8" fill="#eff6ff"/>
+      <path d="M185 25l10 10m0-10l-10 10" stroke="#003D9B" stroke-width="2"/>
+    </g>
+
+    <!-- Card 2: Fichas Criadas -->
+    <g transform="translate(236, 0)">
+      <rect x="0" y="0" width="220" height="85" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <rect x="0" y="0" width="4" height="85" rx="2" fill="#722ED1"/>
+      <text x="16" y="22" fill="#722ED1" font-size="10" font-weight="700" letter-spacing="0.5">FICHAS CRIADAS (JULHO)</text>
+      <text x="16" y="52" fill="#0f172a" font-size="22" font-weight="800">84</text>
+      <text x="50" y="52" fill="#64748b" font-size="11">fichas</text>
+      <rect x="175" y="15" width="30" height="30" rx="8" fill="#f3e8ff"/>
+      <rect x="186" y="24" width="8" height="12" fill="none" stroke="#722ED1" stroke-width="1.5"/>
+    </g>
+
+    <!-- Card 3: Concluídas -->
+    <g transform="translate(472, 0)">
+      <rect x="0" y="0" width="220" height="85" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <rect x="0" y="0" width="4" height="85" rx="2" fill="#389E0D"/>
+      <text x="16" y="22" fill="#389E0D" font-size="10" font-weight="700" letter-spacing="0.5">CONCLUÍDAS (JULHO)</text>
+      <text x="16" y="52" fill="#0f172a" font-size="22" font-weight="800">10.800</text>
+      <text x="105" y="52" fill="#64748b" font-size="11">un.</text>
+      <rect x="175" y="15" width="30" height="30" rx="8" fill="#f0fdf4"/>
+      <path d="M185 30l3 3 6-6" stroke="#389E0D" stroke-width="2" fill="none"/>
+    </g>
+
+    <!-- Card 4: Eficiência OEE -->
+    <g transform="translate(708, 0)">
+      <rect x="0" y="0" width="220" height="85" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <rect x="0" y="0" width="4" height="85" rx="2" fill="#0284c7"/>
+      <text x="16" y="22" fill="#0284c7" font-size="10" font-weight="700" letter-spacing="0.5">EFICIÊNCIA OEE (JULHO)</text>
+      <text x="16" y="52" fill="#0f172a" font-size="22" font-weight="800">98.2%</text>
+      <rect x="175" y="15" width="30" height="30" rx="8" fill="#e0f2fe"/>
+      <circle cx="190" cy="30" r="6" stroke="#0284c7" stroke-width="2" fill="none"/>
+    </g>
+
+    <!-- Card 5: Ciclo -->
+    <g transform="translate(944, 0)">
+      <rect x="0" y="0" width="236" height="85" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <rect x="0" y="0" width="4" height="85" rx="2" fill="#D48806"/>
+      <text x="16" y="22" fill="#D48806" font-size="10" font-weight="700" letter-spacing="0.5">CICLO (JULHO)</text>
+      <text x="16" y="52" fill="#0f172a" font-size="22" font-weight="800">4.2 dias</text>
+      <rect x="190" y="15" width="30" height="30" rx="8" fill="#fef3c7"/>
+      <circle cx="205" cy="30" r="6" stroke="#D48806" stroke-width="2" fill="none"/>
+    </g>
+  </g>
+
+  <!-- Rastreamento Geral de Produção -->
+  <g transform="translate(240, 215)">
+    <rect x="0" y="0" width="1180" height="145" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="20" y="28" fill="#0f172a" font-size="15" font-weight="700">Rastreamento Geral de Produção - Julho de 2026</text>
+    <text x="20" y="44" fill="#64748b" font-size="11">Fluxo de trabalho e situação atual das fichas em tempo real</text>
+
+    <!-- Status Badges right -->
+    <rect x="940" y="16" width="105" height="22" rx="11" fill="#fef3c7"/>
+    <circle cx="952" cy="27" r="3.5" fill="#d97706"/>
+    <text x="962" y="31" fill="#b45309" font-size="10" font-weight="600">Gargalo Moderado</text>
+
+    <rect x="1055" y="16" width="105" height="22" rx="11" fill="#eff6ff"/>
+    <circle cx="1067" cy="27" r="3.5" fill="#2563eb"/>
+    <text x="1077" y="31" fill="#1d4ed8" font-size="10" font-weight="600">Dentro do Padrão</text>
+
+    <!-- 4 Flow Cards -->
+    <!-- Card 1 -->
+    <g transform="translate(20, 56)">
+      <rect x="0" y="0" width="260" height="72" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+      <circle cx="30" cy="36" r="16" fill="#fef3c7"/>
+      <circle cx="30" cy="36" r="8" stroke="#d97706" stroke-width="2" fill="none"/>
+      <text x="60" y="32" fill="#0f172a" font-size="13" font-weight="700">Aguardando Retirada</text>
+      <text x="60" y="48" fill="#d97706" font-size="11" font-weight="600">1.240 pcs • 12 Fichas</text>
+    </g>
+
+    <path d="M 292 92 L 308 92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Card 2 -->
+    <g transform="translate(315, 56)">
+      <rect x="0" y="0" width="260" height="72" rx="10" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"/>
+      <circle cx="30" cy="36" r="16" fill="#e0f2fe"/>
+      <rect x="23" y="29" width="14" height="14" stroke="#0284c7" stroke-width="2" fill="none"/>
+      <text x="60" y="32" fill="#0f172a" font-size="13" font-weight="700">Em Produção</text>
+      <text x="60" y="48" fill="#0284c7" font-size="11" font-weight="600">4.850 pcs • Capacidade 78%</text>
+    </g>
+
+    <path d="M 587 92 L 603 92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Card 3 -->
+    <g transform="translate(610, 56)">
+      <rect x="0" y="0" width="260" height="72" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+      <circle cx="30" cy="36" r="16" fill="#f3e8ff"/>
+      <path d="M23 36l7 7 7-14" stroke="#722ED1" stroke-width="2" fill="none"/>
+      <text x="60" y="32" fill="#0f172a" font-size="13" font-weight="700">Recebido Parcialmente</text>
+      <text x="60" y="48" fill="#722ED1" font-size="11" font-weight="600">3.110 pcs • Fluxo Normal</text>
+    </g>
+
+    <path d="M 882 92 L 898 92" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Card 4 -->
+    <g transform="translate(905, 56)">
+      <rect x="0" y="0" width="255" height="72" rx="10" fill="#f0fdf4" stroke="#22c55e"/>
+      <circle cx="30" cy="36" r="16" fill="#dcfce7"/>
+      <path d="M24 36l4 4 8-8" stroke="#16a34a" stroke-width="2.5" fill="none"/>
+      <text x="60" y="32" fill="#0f172a" font-size="13" font-weight="700">Concluídas (Julho)</text>
+      <text x="60" y="48" fill="#15803d" font-size="11" font-weight="600">10.800 pcs • Finalizado</text>
+    </g>
+  </g>
+
+  <!-- Lower Section: Charts & Reports -->
+  <g transform="translate(240, 375)">
+    <!-- Chart 1: Tendência de Produção -->
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="760" height="260" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <text x="20" y="28" fill="#0f172a" font-size="15" font-weight="700">Tendência de Produção Semanal</text>
+      <text x="20" y="44" fill="#64748b" font-size="11">Volume de peças produzidas vs Meta diária (500 pcs/dia)</text>
+
+      <!-- Legend -->
+      <rect x="580" y="20" width="12" height="12" rx="2" fill="#003D9B"/>
+      <text x="598" y="30" fill="#334155" font-size="11" font-weight="600">REALIZADO</text>
+
+      <line x1="680" y1="26" x2="700" y2="26" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3 3"/>
+      <text x="708" y="30" fill="#334155" font-size="11" font-weight="600">META</text>
+
+      <!-- Bars Mockup -->
+      <!-- Mon -->
+      <rect x="60" y="110" width="40" height="110" rx="4" fill="#003D9B"/>
+      <text x="68" y="238" fill="#64748b" font-size="11">Seg</text>
+      <!-- Tue -->
+      <rect x="160" y="80" width="40" height="140" rx="4" fill="#003D9B"/>
+      <text x="168" y="238" fill="#64748b" font-size="11">Ter</text>
+      <!-- Wed -->
+      <rect x="260" y="70" width="40" height="150" rx="4" fill="#003D9B"/>
+      <text x="268" y="238" fill="#64748b" font-size="11">Qua</text>
+      <!-- Thu -->
+      <rect x="360" y="90" width="40" height="130" rx="4" fill="#003D9B"/>
+      <text x="368" y="238" fill="#64748b" font-size="11">Qui</text>
+      <!-- Fri -->
+      <rect x="460" y="60" width="40" height="160" rx="4" fill="#003D9B"/>
+      <text x="468" y="238" fill="#64748b" font-size="11">Sex</text>
+      <!-- Sat -->
+      <rect x="560" y="130" width="40" height="90" rx="4" fill="#003D9B"/>
+      <text x="568" y="238" fill="#64748b" font-size="11">Sáb</text>
+
+      <!-- Target line -->
+      <line x1="40" y1="100" x2="720" y2="100" stroke="#ef4444" stroke-width="2" stroke-dasharray="4 4"/>
+    </g>
+
+    <!-- Chart 2: Distribuição por Malha -->
+    <g transform="translate(780, 0)">
+      <rect x="0" y="0" width="400" height="260" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <text x="20" y="28" fill="#0f172a" font-size="15" font-weight="700">Distribuição por Malha</text>
+      <text x="20" y="44" fill="#64748b" font-size="11">Proporção estimada por tipo de tecido</text>
+
+      <!-- Donut chart mockup -->
+      <circle cx="200" cy="140" r="65" stroke="#003D9B" stroke-width="25" fill="none" stroke-dasharray="240 160"/>
+      <circle cx="200" cy="140" r="65" stroke="#389E0D" stroke-width="25" fill="none" stroke-dasharray="100 300" stroke-dashoffset="-240"/>
+      <circle cx="200" cy="140" r="65" stroke="#D48806" stroke-width="25" fill="none" stroke-dasharray="60 340" stroke-dashoffset="-340"/>
+      <text x="200" y="138" text-anchor="middle" fill="#0f172a" font-size="16" font-weight="800">12.450</text>
+      <text x="200" y="152" text-anchor="middle" fill="#64748b" font-size="10">Peças Total</text>
+
+      <!-- Legend -->
+      <g transform="translate(30, 225)">
+        <rect x="0" y="0" width="10" height="10" rx="2" fill="#003D9B"/>
+        <text x="14" y="9" fill="#334155" font-size="10">Meia Malha 55%</text>
+
+        <rect x="130" y="0" width="10" height="10" rx="2" fill="#389E0D"/>
+        <text x="144" y="9" fill="#334155" font-size="10">Ribana 25%</text>
+
+        <rect x="240" y="0" width="10" height="10" rx="2" fill="#D48806"/>
+        <text x="254" y="9" fill="#334155" font-size="10">Moletom 20%</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Bottom Row: Tables & Recent Activities -->
+  <g transform="translate(240, 650)">
+    <!-- Comparativo Semanal -->
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="570" height="240" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <text x="20" y="28" fill="#0f172a" font-size="15" font-weight="700">Comparativo Semanal de Produção</text>
+      <text x="20" y="44" fill="#64748b" font-size="11">Análise comparativa de fluxo de peças por dia</text>
+
+      <!-- Table header -->
+      <rect x="20" y="60" width="530" height="30" rx="6" fill="#f8fafc"/>
+      <text x="35" y="80" fill="#475569" font-size="11" font-weight="700">DIA</text>
+      <text x="160" y="80" fill="#475569" font-size="11" font-weight="700">CORTADAS</text>
+      <text x="300" y="80" fill="#475569" font-size="11" font-weight="700">RECEBIDAS</text>
+      <text x="440" y="80" fill="#475569" font-size="11" font-weight="700">EFICIÊNCIA</text>
+
+      <!-- Rows -->
+      <text x="35" y="115" fill="#0f172a" font-size="12" font-weight="600">Segunda-feira</text>
+      <text x="160" y="115" fill="#003D9B" font-size="12" font-weight="700">2.450 un.</text>
+      <text x="300" y="115" fill="#389E0D" font-size="12" font-weight="700">2.380 un.</text>
+      <text x="440" y="115" fill="#0f172a" font-size="12" font-weight="600">97.1%</text>
+
+      <line x1="20" y1="130" x2="550" y2="130" stroke="#f1f5f9"/>
+
+      <text x="35" y="155" fill="#0f172a" font-size="12" font-weight="600">Terça-feira</text>
+      <text x="160" y="155" fill="#003D9B" font-size="12" font-weight="700">2.800 un.</text>
+      <text x="300" y="155" fill="#389E0D" font-size="12" font-weight="700">2.750 un.</text>
+      <text x="440" y="155" fill="#0f172a" font-size="12" font-weight="600">98.2%</text>
+
+      <line x1="20" y1="170" x2="550" y2="170" stroke="#f1f5f9"/>
+
+      <text x="35" y="195" fill="#0f172a" font-size="12" font-weight="600">Quarta-feira</text>
+      <text x="160" y="195" fill="#003D9B" font-size="12" font-weight="700">3.100 un.</text>
+      <text x="300" y="195" fill="#389E0D" font-size="12" font-weight="700">3.050 un.</text>
+      <text x="440" y="195" fill="#0f172a" font-size="12" font-weight="600">98.4%</text>
+    </g>
+
+    <!-- Atividades Recentes -->
+    <g transform="translate(590, 0)">
+      <rect x="0" y="0" width="590" height="240" rx="12" fill="#ffffff" stroke="#e2e8f0"/>
+      <text x="20" y="28" fill="#0f172a" font-size="15" font-weight="700">Atividades Recentes de Produção</text>
+      <text x="20" y="44" fill="#64748b" font-size="11">Últimas atualizações registradas no sistema</text>
+
+      <!-- Activity Items -->
+      <g transform="translate(20, 65)">
+        <circle cx="12" cy="12" r="12" fill="#eff6ff"/>
+        <path d="M12 8v8M8 12h8" stroke="#003D9B" stroke-width="2"/>
+        <text x="35" y="12" fill="#0f172a" font-size="12" font-weight="600">Nova Ficha de Corte #1042 criada</text>
+        <text x="35" y="26" fill="#64748b" font-size="11">Camiseta Polo Meia Malha • 450 peças • Banca Márcia</text>
+        <text x="470" y="18" fill="#94a3b8" font-size="10">Há 15 min</text>
+      </g>
+
+      <line x1="20" y1="115" x2="570" y2="115" stroke="#f1f5f9"/>
+
+      <g transform="translate(20, 125)">
+        <circle cx="12" cy="12" r="12" fill="#f0fdf4"/>
+        <path d="M8 12l3 3 6-6" stroke="#16a34a" stroke-width="2" fill="none"/>
+        <text x="35" y="12" fill="#0f172a" font-size="12" font-weight="600">Fechamento semanal da Banca Ailton concluído</text>
+        <text x="35" y="26" fill="#64748b" font-size="11">Pagamento via PIX realizado • R$ 1.149,75</text>
+        <text x="470" y="18" fill="#94a3b8" font-size="10">Há 1 hora</text>
+      </g>
+
+      <line x1="20" y1="175" x2="570" y2="175" stroke="#f1f5f9"/>
+
+      <g transform="translate(20, 185)">
+        <circle cx="12" cy="12" r="12" fill="#fef3c7"/>
+        <circle cx="12" cy="12" r="4" fill="#d97706"/>
+        <text x="35" y="12" fill="#0f172a" font-size="12" font-weight="600">Entrada de Bobina de Malha de Algodão</text>
+        <text x="35" y="26" fill="#64748b" font-size="11">120kg estocados no galpão principal</text>
+        <text x="470" y="18" fill="#94a3b8" font-size="10">Há 3 horas</text>
+      </g>
+    </g>
+  </g>
+</svg>
