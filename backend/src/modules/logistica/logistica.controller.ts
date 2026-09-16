@@ -1,10 +1,11 @@
 import { Controller, Post, Param, Body, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { LogisticaService } from './logistica.service.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 
 @Controller('api/v1')
-@UseGuards(RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class LogisticaController {
   constructor(private readonly logisticaService: LogisticaService) {}
 

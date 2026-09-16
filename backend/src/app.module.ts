@@ -25,25 +25,32 @@ import { AuditoriaLog } from './modules/auditoria/entities/auditoria-log.entity.
 import { Conferencia } from './modules/logistica/entities/conferencia.entity.js';
 import { SharedModule } from './shared/shared.module.js';
 
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{
       ttl: 5 * 60, // 5 minutos
-      limit: 5, // 5 requisições max
+      limit: 1000, // Ajustado de 5 para 1000 (rate limit real para ERP)
     }]),
     ScheduleModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '',
-      database: 'omni',
-      entities: [
-        Empresa, Role, Usuario, IntegracaoMarketplace, Produto, 
-        Estoque, Pedido, ItemPedido, AuditoriaLog, Conferencia
-      ],
-      synchronize: false, // Em produção e homologação deve ser false (usar migrations ou script sql base)
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('DB_HOST') || 'localhost',
+        port: configService.get<number>('DB_PORT') || 3306,
+        username: configService.get<string>('DB_USER') || 'root',
+        password: configService.get<string>('DB_PASSWORD') || '',
+        database: configService.get<string>('DB_NAME') || 'omni',
+        entities: [
+          Empresa, Role, Usuario, IntegracaoMarketplace, Produto, 
+          Estoque, Pedido, ItemPedido, AuditoriaLog, Conferencia
+        ],
+        synchronize: false,
+      }),
+      inject: [ConfigService],
     }),
     SharedModule,
     AuthModule,

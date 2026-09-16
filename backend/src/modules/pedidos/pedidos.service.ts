@@ -51,82 +51,151 @@ export class PedidosService {
   async importarPedidoMarketplace(
     integracaoId: string,
     empresaId: string,
-    dadosPedido: any, // Adaptado do formato de entrada do marketplace
+    dadosPedido: any,
     itens: Array<{ sku: string; quantidade: number; precoUnitario: number }>
   ): Promise<void> {
-    await this.pedidoRepo.manager.transaction(async (manager) => {
-      // 1. Verificação Idempotente
-      const pedidoExistente = await manager.findOne(Pedido, {
-        where: {
+    // Validação pré-transacional
+    if (!itens || itens.length === 0) {
+      throw new Error('Pedido sem itens');
+    }
+
+    const mapItens: Array<{ sku: string; quantidade: number; precoUnitario: number; idProduto?: string }> = [];
+
+    for (const item of itens) {
+      if (!item.sku || item.sku.trim() === '') {
+        throw new Error('SKU inválido ou vazio');
+      }
+      if (!Number.isInteger(item.quantidade) || item.quantidade <= 0) {
+        throw new Error(`Quantidade inválida para o SKU ${item.sku}`);
+      }
+      if (typeof item.precoUnitario !== 'number' || item.precoUnitario < 0) {
+        throw new Error(`Preço unitário inválido para o SKU ${item.sku}`);
+      }
+      mapItens.push({ ...item });
+    }
+
+    try {
+      await this.pedidoRepo.manager.transaction(async (manager) => {
+        // 1. Verificação Idempotente
+        const pedidoExistente = await manager.findOne(Pedido, {
+          where: {
+            idIntegracao: integracaoId,
+            idPedidoMarketplace: dadosPedido.id_pedido_marketplace,
+          }
+        });
+
+        if (pedidoExistente) {
+          // Pedido já importado, ignora pacificamente.
+          return;
+        }
+
+        // 2. Resolver IDs e Reserva de Estoque Atômica
+        for (const item of mapItens) {
+          const [produto] = await manager.query(
+            `SELECT id FROM produtos WHERE sku = ? AND id_empresa = ? LIMIT 1`,
+            [item.sku, empresaId]
+          );
+
+          if (!produto) {
+            throw new Error(`Produto não encontrado para o SKU ${item.sku}`);
+          }
+          
+          item.idProduto = produto.id; // cache idProduto para reuso
+
+          const result = await manager.query(
+            `UPDATE estoque 
+             SET quantidade_disponivel = quantidade_disponivel - ?,
+                 quantidade_reservada = quantidade_reservada + ?
+             WHERE id_produto = ? AND quantidade_disponivel >= ?`,
+            [item.quantidade, item.quantidade, produto.id, item.quantidade]
+          );
+
+          if (result.affectedRows === 0) {
+            throw new Error(`Estoque insuficiente para o produto ${item.sku}`);
+          }
+        }
+
+        // 3. Persistência do Pedido
+        const novoPedido = manager.create(Pedido, {
           idIntegracao: integracaoId,
+          idEmpresa: empresaId,
           idPedidoMarketplace: dadosPedido.id_pedido_marketplace,
+          clienteNome: dadosPedido.cliente_nome,
+          valorTotal: dadosPedido.valor_total,
+          taxasMarketplace: dadosPedido.taxas_marketplace,
+          status: 'Pendente'
+        });
+
+        const pedidoSalvo = await manager.save(Pedido, novoPedido);
+
+        // 4. Persistência dos Itens
+        for (const item of mapItens) {
+          const novoItem = manager.create(ItemPedido, {
+            idPedido: pedidoSalvo.id,
+            idProduto: item.idProduto, // reuso da query anterior
+            quantidade: item.quantidade,
+            precoUnitario: item.precoUnitario,
+            quantidadeBipada: 0
+          });
+
+          await manager.save(ItemPedido, novoItem);
         }
       });
+    } catch (err: any) {
+      // 5. Tratamento de colisão de Unique Key no nível de banco (caso dois workers rodem exatamente ao mesmo tempo)
+      if (err.code === 'ER_DUP_ENTRY' && err.message.includes('uk_pedido_integracao')) {
+        // Ignora silenciosamente, pois é colisão idempotente
+        return;
+      }
+      console.error('ERRO EM IMPORTAR:', err);
+      throw err;
+    }
+  }
 
-      if (pedidoExistente) {
-        // Pedido já importado, ignora.
+  /**
+   * Restaura o estoque atômica e integralmente em caso de cancelamento, com proteção de idempotência.
+   */
+  async cancelarPedido(idPedido: string): Promise<void> {
+    await this.pedidoRepo.manager.transaction(async (manager) => {
+      const pedido = await manager.findOne(Pedido, { where: { id: idPedido } });
+      
+      if (!pedido) {
+        throw new NotFoundException('Pedido não encontrado');
+      }
+
+      if (pedido.status === 'Cancelado') {
+        // Idempotente: se já estiver cancelado, não faz nada
         return;
       }
 
-      // 2. Reserva de Estoque Atômica
+      const itens = await manager.find(ItemPedido, { where: { idPedido } });
+
       for (const item of itens) {
-        // Encontra produto pelo SKU e Empresa
-        // (Nota: Produto entity precisa ser carregada ou importada aqui se precisarmos do id. Assumiremos que a query pode ser direta)
-        
-        // Em um sistema real, buscaríamos o id do produto a partir do SKU e Empresa
-        const [produto] = await manager.query(
-          `SELECT id FROM produtos WHERE sku = ? AND id_empresa = ? LIMIT 1`,
-          [item.sku, empresaId]
+        // Validação defensiva (nunca permitir que a devolução deixe reservado negativo, embora a query trate)
+        const [estoque] = await manager.query(
+          `SELECT quantidade_reservada FROM estoque WHERE id_produto = ? LIMIT 1`,
+          [item.idProduto]
         );
 
-        if (!produto) {
-          throw new Error(`Produto não encontrado para o SKU ${item.sku}`);
+        if (!estoque || estoque.quantidade_reservada < item.quantidade) {
+          throw new Error(`Inconsistência: Reserva atual é menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
         }
 
         const result = await manager.query(
-          `UPDATE estoque 
-           SET quantidade_disponivel = quantidade_disponivel - ?,
-               quantidade_reservada = quantidade_reservada + ?
-           WHERE id_produto = ? AND quantidade_disponivel >= ?`,
-          [item.quantidade, item.quantidade, produto.id, item.quantidade]
+          `UPDATE estoque
+           SET quantidade_disponivel = quantidade_disponivel + ?,
+               quantidade_reservada = quantidade_reservada - ?
+           WHERE id_produto = ? AND quantidade_reservada >= ?`,
+          [item.quantidade, item.quantidade, item.idProduto, item.quantidade]
         );
 
-        // Verifica affectedRows no mysql
         if (result.affectedRows === 0) {
-          throw new Error(`Estoque insuficiente para o produto ${item.sku}`);
+          throw new Error('Falha ao restaurar estoque durante cancelamento');
         }
       }
 
-      // 3. Persistência do Pedido
-      const novoPedido = manager.create(Pedido, {
-        idIntegracao: integracaoId,
-        idEmpresa: empresaId,
-        idPedidoMarketplace: dadosPedido.id_pedido_marketplace,
-        clienteNome: dadosPedido.cliente_nome,
-        valorTotal: dadosPedido.valor_total,
-        taxasMarketplace: dadosPedido.taxas_marketplace,
-        status: 'Pendente'
-      });
-
-      const pedidoSalvo = await manager.save(Pedido, novoPedido);
-
-      // 4. Persistência dos Itens
-      for (const item of itens) {
-        const [produto] = await manager.query(
-          `SELECT id FROM produtos WHERE sku = ? AND id_empresa = ? LIMIT 1`,
-          [item.sku, empresaId]
-        );
-        
-        const novoItem = manager.create(ItemPedido, {
-          idPedido: pedidoSalvo.id,
-          idProduto: produto.id,
-          quantidade: item.quantidade,
-          precoUnitario: item.precoUnitario,
-          quantidadeBipada: 0
-        });
-
-        await manager.save(ItemPedido, novoItem);
-      }
+      pedido.status = 'Cancelado';
+      await manager.save(Pedido, pedido);
     });
   }
 }

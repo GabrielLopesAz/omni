@@ -1,9 +1,10 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { CatalogoService } from './catalogo.service.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 
 @Controller('api/v1/produtos')
-@UseGuards(RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class CatalogoController {
   constructor(private readonly catalogoService: CatalogoService) {}
 

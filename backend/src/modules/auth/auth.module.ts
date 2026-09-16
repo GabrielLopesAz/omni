@@ -8,13 +8,25 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Role } from '../usuarios/entities/role.entity.js';
 
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario, Role]),
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'omni_secret_key_123',
-      signOptions: { expiresIn: '1d' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET não está configurado. Aplicação abortada por segurança.');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '1d' },
+        };
+      },
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
