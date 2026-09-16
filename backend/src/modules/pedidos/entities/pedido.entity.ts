@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index, VersionColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index, VersionColumn, Unique } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity.js';
 import { IntegracaoMarketplace } from '../../integracoes/entities/integracao-marketplace.entity.js';
 
 @Entity('pedidos')
+@Unique('UQ_integracao_pedido_marketplace', ['idIntegracao', 'idPedidoMarketplace'])
 export class Pedido {
   @PrimaryGeneratedColumn('uuid')
   id: string;

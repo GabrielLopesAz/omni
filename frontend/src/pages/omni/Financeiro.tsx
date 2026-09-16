@@ -1,4 +1,4 @@
-﻿import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Lock } from "lucide-react";
 
 export default function ModuloEmDesenvolvimento() {

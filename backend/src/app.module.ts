@@ -12,6 +12,7 @@ import { LogisticaModule } from './modules/logistica/logistica.module.js';
 import { CatalogoModule } from './modules/catalogo/catalogo.module.js';
 import { EmpresasModule } from './modules/empresas/empresas.module.js';
 import { UsuariosModule } from './modules/usuarios/usuarios.module.js';
+import { PedidosModule } from './modules/pedidos/pedidos.module.js';
 import { Empresa } from './modules/empresas/entities/empresa.entity.js';
 import { Role } from './modules/usuarios/entities/role.entity.js';
 import { Usuario } from './modules/usuarios/entities/usuario.entity.js';
@@ -52,6 +53,7 @@ import { SharedModule } from './shared/shared.module.js';
     AuditoriaModule,
     LogisticaModule,
     CatalogoModule,
+    PedidosModule,
   ],
   controllers: [AppController],
   providers: [

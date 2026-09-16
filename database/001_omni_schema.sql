@@ -63,6 +63,7 @@ CREATE TABLE pedidos (
     rastreio VARCHAR(100),
     versao INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_pedido_integracao (id_integracao, id_pedido_marketplace),
     FOREIGN KEY (id_empresa) REFERENCES empresas(id) ON DELETE CASCADE,
     FOREIGN KEY (id_integracao) REFERENCES integracoes_marketplace(id) ON DELETE SET NULL
 );
@@ -73,6 +74,7 @@ CREATE TABLE itens_pedido (
     id_pedido VARCHAR(36),
     id_produto VARCHAR(36),
     quantidade INT NOT NULL DEFAULT 1,
+    quantidade_bipada INT NOT NULL DEFAULT 0,
     preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     FOREIGN KEY (id_pedido) REFERENCES pedidos(id) ON DELETE CASCADE,
     FOREIGN KEY (id_produto) REFERENCES produtos(id) ON DELETE CASCADE
@@ -122,37 +124,10 @@ CREATE TABLE auditoria_logs (
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
--- ======== REGRAS DE NEGÓCIO (TRIGGERS NO MYSQL) ========
-
-DELIMITER //
-
--- Trigger disparada APÓS a inserção em itens_pedido (Reserva de Estoque)
-CREATE TRIGGER trigger_baixa_estoque
-AFTER INSERT ON itens_pedido
-FOR EACH ROW
-BEGIN
-    UPDATE estoque
-    SET quantidade_disponivel = quantidade_disponivel - NEW.quantidade,
-        quantidade_reservada = quantidade_reservada + NEW.quantidade
-    WHERE id_produto = NEW.id_produto;
-END //
-
--- Trigger disparada APÓS alteração do status do pedido (Estorno)
-CREATE TRIGGER trigger_estorno_estoque
-AFTER UPDATE ON pedidos
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Cancelado' AND OLD.status != 'Cancelado' THEN
-        -- Para cada item do pedido, atualiza o estoque correspondente
-        UPDATE estoque e
-        JOIN itens_pedido ip ON e.id_produto = ip.id_produto
-        SET e.quantidade_disponivel = e.quantidade_disponivel + ip.quantidade,
-            e.quantidade_reservada = e.quantidade_reservada - ip.quantidade
-        WHERE ip.id_pedido = NEW.id;
-    END IF;
-END //
-
-DELIMITER ;
+-- ======== REGRAS DE NEGÓCIO ========
+-- Removidas as triggers de estoque (trigger_baixa_estoque, trigger_estorno_estoque).
+-- A baixa e estorno agora são feitos atomicamente no Application Layer (NestJS)
+-- para evitar overselling e saldo negativo.
 
 -- ==========================================
 -- DADOS INICIAIS

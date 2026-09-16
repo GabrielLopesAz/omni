@@ -60,7 +60,7 @@ export class LogisticaService {
       
       // Checa se finalizou o pedido todo (todos os itens foram totalmente bipados)
       const todosBipados = itens.every(i => 
-        (i.id === itemAlvo.id ? itemAlvo.quantidadeBipada : i.quantidadeBipada) >= i.quantidade
+        (i.id === itemAlvo.id ? itemAlvo.quantidadeBipada : i.quantidadeBipada) === i.quantidade
       );
       
       if (todosBipados) {
