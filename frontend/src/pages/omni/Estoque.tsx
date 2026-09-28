@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { api } from "@/services/api";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { produtosService, Produto } from "@/services/produtosService";
 import { 
   Table, 
   TableBody, 
@@ -15,45 +15,32 @@ import { Filter, Download, Plus, AlertTriangle, ArrowRightLeft, Package } from "
 import { useToast } from "@/hooks/use-toast";
 import MovimentacaoEstoqueModal from "@/components/omni/MovimentacaoEstoqueModal";
 
-interface ProdutoEstoque {
-  id: string;
-  sku: string;
-  nome: string;
-  categoria: string;
-  precoBase: number;
-  imagemUrl: string;
-  estoque: {
-    quantidadeDisponivel: number;
-    quantidadeReservada: number;
-  };
-}
-
 import { RequirePermission } from "@/components/auth/RequirePermission";
 
 export default function Estoque() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [produtos, setProdutos] = useState<ProdutoEstoque[]>([]);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"ENTRADA" | "SAIDA">("ENTRADA");
 
-  const fetchEstoque = async () => {
+  const fetchEstoque = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/produtos');
-      setProdutos(res.data);
+      const data = await produtosService.listarProdutos();
+      setProdutos(data);
     } catch (error) {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar o estoque." });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchEstoque();
-  }, []);
+  }, [fetchEstoque]);
 
   const openMovimentacao = (tipo: "ENTRADA" | "SAIDA") => {
     setModalType(tipo);

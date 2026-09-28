@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { api } from "@/services/api";
+import { useState, useEffect, useCallback } from "react";
+import { produtosService, Produto } from "@/services/produtosService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,22 +7,6 @@ import { Plus, Search, Edit2, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ProdutoForm from "@/components/produtos/ProdutoForm";
 import { RequirePermission } from "@/components/auth/RequirePermission";
-
-interface Estoque {
-  quantidadeDisponivel: number;
-  quantidadeReservada: number;
-}
-
-interface Produto {
-  id: string;
-  sku: string;
-  nome: string;
-  categoria: string;
-  precoBase: number;
-  custoUnitario: number;
-  imagemUrl: string;
-  estoque: Estoque;
-}
 
 export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -32,30 +16,26 @@ export default function Produtos() {
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
   const { toast } = useToast();
 
-  const fetchProdutos = async () => {
+  const fetchProdutos = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/produtos');
-      setProdutos(res.data);
+      const data = await produtosService.listarProdutos();
+      setProdutos(data);
     } catch (error) {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os produtos." });
-      // Fallback simulado para preview
-      setProdutos([
-        { id: "1", sku: "TSHIRT-01", nome: "Camiseta Básica Branca", categoria: "Vestuário", precoBase: 49.90, custoUnitario: 15.00, imagemUrl: "", estoque: { quantidadeDisponivel: 120, quantidadeReservada: 5 } }
-      ]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchProdutos();
-  }, []);
+  }, [fetchProdutos]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return;
     try {
-      await api.delete(`/produtos/${id}`);
+      await produtosService.excluirProduto(id);
       toast({ title: "Produto excluído", description: "O produto foi removido com sucesso." });
       fetchProdutos();
     } catch (error) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/services/api";
+import { estoqueService } from "@/services/estoqueService";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -60,10 +60,7 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
     setLoading(true);
 
     try {
-      await api.put(`/produtos/${produtoId}/estoque`, {
-        quantidade: qtd,
-        tipo
-      });
+      await estoqueService.ajustarEstoque(produtoId, qtd, tipo);
       
       toast({ 
         title: "Sucesso", 

@@ -307,7 +307,6 @@ export const useSupabaseCrud = <T extends Record<string, any>>(tableName: string
 export const useGrupos = () => useSupabaseCrud('grupos');
 export const useSubgrupos = () => useSupabaseCrud('subgrupos');
 export const useSubSubgrupos = () => useSupabaseCrud('sub_subgrupos');
-export const useProdutos = () => useSupabaseCrud('produtos');
 export const useClientes = () => useSupabaseCrud('clientes');
 export const useFornecedores = () => useSupabaseCrud('fornecedores');
 export const useCompras = () => useSupabaseCrud('compras');

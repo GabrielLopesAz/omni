@@ -48,13 +48,13 @@ export async function calcularValorFichas(
     const produtos: Record<string, any> = {};
     const todosProdutos = await produtosService.listarProdutos();
     produtoNomes.forEach(nome => {
-      produtos[nome] = todosProdutos.find((p: any) => p.nome_produto === nome) || null;
+      produtos[nome] = todosProdutos.find((p: any) => p.nome === nome || p.nome_produto === nome) || null;
     });
     return fichas
       .filter(ficha => ficha.banca === banca.nome)
       .map(ficha => {
         const produto = produtos[ficha.produto];
-        const valorUnitario = produto?.valor_unitario ?? banca.valorPorPeca ?? 4.50;
+        const valorUnitario = produto?.precoBase ?? produto?.valor_unitario ?? banca.valorPorPeca ?? 4.50;
         const valorTotal = valorUnitario * ficha.quantidade;
         return {
           ...ficha,

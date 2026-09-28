@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { api } from "@/services/api";
+import { produtosService } from "@/services/produtosService";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProdutoFormProps {
@@ -56,11 +56,11 @@ export default function ProdutoForm({ open, onOpenChange, produtoToEdit, onSucce
 
       if (produtoToEdit) {
         // delete fields that shouldn't be updated like estoqueInicial
-        delete payload.estoqueInicial;
-        await api.put(`/produtos/${produtoToEdit.id}`, payload);
+        delete (payload as any).estoqueInicial;
+        await produtosService.atualizarProduto(produtoToEdit.id, payload);
         toast({ title: "Sucesso", description: "Produto atualizado!" });
       } else {
-        await api.post("/produtos", payload);
+        await produtosService.criarProduto(payload);
         toast({ title: "Sucesso", description: "Produto cadastrado!" });
       }
       onSuccess();
