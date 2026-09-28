@@ -11,8 +11,7 @@ describe('Concorrência Banco de Dados (e2e)', () => {
 
   beforeAll(async () => {
     if (process.env.NODE_ENV !== 'test') {
-      console.warn('⚠️ Forçando NODE_ENV=test para segurança da suíte E2E.');
-      process.env.NODE_ENV = 'test';
+      throw new Error('Ambiente inválido! Testes E2E DEVEM rodar em ambiente de teste (NODE_ENV=test)');
     }
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -51,7 +50,7 @@ describe('Concorrência Banco de Dados (e2e)', () => {
     await dataSource.query(`DELETE FROM empresas WHERE id = ?`, [idEmpresa]);
 
     // Setup de Dados Reais
-    await dataSource.query(`INSERT INTO empresas (id, razao_social, cnpj) VALUES (?, 'Empresa Teste', '00000000000000')`, [idEmpresa]);
+    await dataSource.query(`INSERT INTO empresas (id, nome, razao_social, cnpj) VALUES (?, 'Empresa Teste', 'Empresa Teste LTDA', '00000000000000')`, [idEmpresa]);
     await dataSource.query(`INSERT INTO integracoes_marketplace (id, id_empresa, nome, credenciais) VALUES (?, ?, 'Mercado Livre', '{}')`, [idIntegracao, idEmpresa]);
     await dataSource.query(`INSERT INTO produtos (id, id_empresa, nome, sku) VALUES (?, ?, 'Produto Teste', ?)`, [idProduto, idEmpresa, sku]);
     await dataSource.query(`INSERT INTO estoque (id_produto, quantidade_disponivel, quantidade_reservada) VALUES (?, 10, 0)`, [idProduto]);
