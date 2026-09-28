@@ -19,7 +19,9 @@ async function bootstrap() {
   // Security
   app.use(helmet());
   app.enableCors({
-    origin: '*', // Em produção, restringir isso
+    origin: process.env.NODE_ENV === 'production' 
+      ? (process.env.FRONTEND_URL || false) // Bloqueia se FRONTEND_URL não estiver configurada em prod
+      : '*', 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
   

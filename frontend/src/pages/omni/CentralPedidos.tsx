@@ -15,24 +15,28 @@ export default function CentralPedidos() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
-  const carregarPedidos = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const status = statusFilter !== "todos" ? statusFilter : undefined;
-      const data = await pedidosService.listar(status);
-      setPedidos(data);
-    } catch (err: any) {
-      console.error(err);
-      setError("Não foi possível carregar os pedidos. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const carregarPedidos = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const status = statusFilter !== "todos" ? statusFilter : undefined;
+        const data = await pedidosService.listar(status);
+        setPedidos(data);
+      } catch (err: unknown) {
+        console.error(err);
+        setError("Não foi possível carregar os pedidos. Tente novamente.");
+      } finally {
+        setLoading(false);
+      }
+    };
     carregarPedidos();
   }, [statusFilter]);
+
+  const tentarNovamente = () => {
+    setLoading(true);
+    setStatusFilter(prev => prev === "todos" ? "todos " : "todos"); // Força trigger do effect
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4">
@@ -54,7 +58,7 @@ export default function CentralPedidos() {
               <SelectItem value="Cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={carregarPedidos} disabled={loading}>
+          <Button variant="outline" onClick={tentarNovamente} disabled={loading}>
             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
@@ -67,7 +71,7 @@ export default function CentralPedidos() {
             <AlertCircle className="h-10 w-10 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Erro ao carregar</h3>
             <p className="mb-4">{error}</p>
-            <Button variant="outline" onClick={carregarPedidos}>Tentar Novamente</Button>
+            <Button variant="outline" onClick={tentarNovamente}>Tentar Novamente</Button>
           </CardContent>
         </Card>
       ) : loading && pedidos.length === 0 ? (

@@ -10,6 +10,11 @@ describe('Concorrência Banco de Dados (e2e)', () => {
   let pedidosService: PedidosService;
 
   beforeAll(async () => {
+    if (process.env.NODE_ENV !== 'test') {
+      console.warn('⚠️ Forçando NODE_ENV=test para segurança da suíte E2E.');
+      process.env.NODE_ENV = 'test';
+    }
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -18,6 +23,12 @@ describe('Concorrência Banco de Dados (e2e)', () => {
     await app.init();
     
     dataSource = app.get(DataSource);
+    
+    // Fail-fast se o banco de dados não for de teste
+    if (!dataSource.options.database?.toString().includes('test')) {
+      throw new Error(`PERIGO: Execução abortada! O banco de dados conectado (${dataSource.options.database}) não é um banco de teste. Configure DB_NAME=omni_test para e2e.`);
+    }
+
     pedidosService = app.get(PedidosService);
   });
 
@@ -30,25 +41,6 @@ describe('Concorrência Banco de Dados (e2e)', () => {
     const idIntegracao = 'int-teste-conc';
     const idProduto = 'prod-teste-conc';
     const sku = 'SKU-CONC-1';
-
-    // Sincroniza esquema que falta caso a migration não tenha rodado
-    try {
-      await dataSource.query(`ALTER TABLE itens_pedido ADD COLUMN quantidade_bipada INT DEFAULT 0`);
-    } catch(e) {}
-    try {
-      await dataSource.query(`ALTER TABLE pedidos ADD UNIQUE KEY uk_pedido_integracao (id_integracao, id_pedido_marketplace)`);
-    } catch(e) {}
-    try {
-      const triggers = await dataSource.query(`SHOW TRIGGERS`);
-      console.log('TRIGGERS:', triggers);
-      
-      // Remove todas as possíveis triggers
-      for (const t of triggers) {
-        await dataSource.query(`DROP TRIGGER IF EXISTS ${t.Trigger}`);
-      }
-    } catch(e) {
-      console.error(e);
-    }
 
     // Limpeza inicial
     await dataSource.query(`DELETE FROM itens_pedido WHERE id_produto = ?`, [idProduto]);
@@ -86,20 +78,20 @@ describe('Concorrência Banco de Dados (e2e)', () => {
     const fulfilled = resultados.filter(r => r.status === 'fulfilled');
     const rejected = resultados.filter(r => r.status === 'rejected');
     
-    // Apenas uma das requisições pode ter sucesso, ou ambas falharem se der deadlock, mas NUNCA ambas passarem!
-    expect(fulfilled.length).toBeLessThanOrEqual(1);
+    // Apenas UMA das requisições DEVE ter sucesso
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
     
-    if (fulfilled.length === 1) {
-      // Confirma que a outra falhou especificamente por falta de estoque
-      expect(rejected[0].reason.message).toContain('Estoque insuficiente');
-    }
+    // Confirma que a outra falhou especificamente por falta de estoque (rejeita deadlocks ou perdas silenciosas)
+    // Se o driver lançar ER_DEADLOCK, o teste irá falhar porque esperamos 'Estoque insuficiente'
+    // Opcionalmente no mundo real, TypeORM com retry-logic trataria ER_DEADLOCK. Para a validação atômica básica:
+    expect((rejected[0] as PromiseRejectedResult).reason.message).toContain('Estoque insuficiente');
 
     // Verifica integridade atômica
     const estoqueCompleto = await dataSource.query(`SELECT * FROM estoque WHERE id_produto = ?`, [idProduto]);
-    console.log('ESTOQUE FINAL:', estoqueCompleto);
-    
     const pedidosCompletos = await dataSource.query(`SELECT * FROM pedidos WHERE id_empresa = ?`, [idEmpresa]);
-    console.log('PEDIDOS FINAL:', pedidosCompletos);
+    
+    expect(pedidosCompletos.length).toBe(1); // Apenas 1 pedido deve ter sido persistido
 
     const [estoqueFinal] = estoqueCompleto;
     

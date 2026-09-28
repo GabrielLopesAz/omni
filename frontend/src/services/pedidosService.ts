@@ -8,13 +8,12 @@ export interface ProdutoResumo {
 
 export interface EmpresaResumo {
   id: string;
-  razao_social: string;
+  razaoSocial: string;
 }
 
 export interface IntegracaoResumo {
   id: string;
   nome: string;
-  tipo: string;
 }
 
 export interface ItemPedidoDetalhe {
@@ -45,12 +44,12 @@ export interface PedidoDetalhe extends PedidoResumo {
 export const pedidosService = {
   listar: async (status?: string): Promise<PedidoResumo[]> => {
     const params = status ? { status } : {};
-    const { data } = await api.get<PedidoResumo[]>('/api/v1/pedidos', { params });
+    const { data } = await api.get<PedidoResumo[]>('/pedidos', { params });
     return data;
   },
   
   buscarPorId: async (id: string): Promise<PedidoDetalhe> => {
-    const { data } = await api.get<PedidoDetalhe>(`/api/v1/pedidos/${id}`);
+    const { data } = await api.get<PedidoDetalhe>(`/pedidos/${id}`);
     return data;
   }
 };

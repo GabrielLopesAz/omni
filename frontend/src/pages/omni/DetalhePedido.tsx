@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, RefreshCcw, Package } from "lucide-react";
 import { pedidosService, PedidoDetalhe } from "@/services/pedidosService";
+import axios from "axios";
 
 export default function DetalhePedido() {
   const { id } = useParams();
@@ -14,16 +15,16 @@ export default function DetalhePedido() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const carregarDetalhe = async () => {
+  const carregarDetalhe = useCallback(async () => {
     if (!id) return;
     try {
       setLoading(true);
       setError(null);
       const data = await pedidosService.buscarPorId(id);
       setPedido(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      if (err.response?.status === 404) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
         setError("Pedido não encontrado (404).");
       } else {
         setError("Não foi possível carregar os detalhes do pedido.");
@@ -31,11 +32,11 @@ export default function DetalhePedido() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     carregarDetalhe();
-  }, [id]);
+  }, [carregarDetalhe]);
 
   if (loading) {
     return (
