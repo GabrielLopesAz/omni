@@ -72,15 +72,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: new Error("Resposta inválida do servidor.") };
     } catch (error: any) {
-      // Temporário: Para testes de frontend se o backend não existir, liberar acesso "MOCK"
-      if (error.code === 'ERR_NETWORK' || error.response?.status === 404) {
-         console.warn("Backend não encontrado. Usando login MOCK para testes.");
-         const mockRole = email.includes('admin') ? 'ADMIN' : 'CONFERENTE';
-         const mockUser = { id: '1', name: 'Usuário Teste', email, role: mockRole };
-         sessionStorage.setItem('@OMNI:token', 'mock_token_123');
-         sessionStorage.setItem('@OMNI:user', JSON.stringify(mockUser));
-         setUser(mockUser);
-         return { error: null, role: mockRole };
+      if (error.code === 'ERR_NETWORK') {
+        return { error: new Error("Falha de conexão com o servidor. Verifique sua internet ou tente novamente mais tarde.") };
       }
 
       const message = error.response?.data?.message || "Ocorreu um erro durante a autenticação.";
@@ -93,10 +86,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await api.post('/auth/register', { email, password, nome });
       return { error: null };
     } catch (error: any) {
-      // Temporário: Permitir bypass de teste frontend
-      if (error.code === 'ERR_NETWORK' || error.response?.status === 404) {
-         console.warn("Backend não encontrado. Simulação de cadastro com sucesso.");
-         return { error: null };
+      if (error.code === 'ERR_NETWORK') {
+        return { error: new Error("Falha de conexão com o servidor. Verifique sua internet ou tente novamente mais tarde.") };
       }
       const message = error.response?.data?.message || "Erro ao realizar cadastro.";
       return { error: new Error(message) };

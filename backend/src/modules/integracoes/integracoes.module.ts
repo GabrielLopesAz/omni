@@ -6,6 +6,7 @@ import { ItemPedido } from '../pedidos/entities/item-pedido.entity.js';
 import { Produto } from '../catalogo/entities/produto.entity.js';
 import { MarketplaceSyncCron } from './cron/marketplace-sync.cron.js';
 import { CryptoService } from '../../shared/crypto/crypto.service.js';
+import { PedidosModule } from '../pedidos/pedidos.module.js';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { CryptoService } from '../../shared/crypto/crypto.service.js';
       ItemPedido,
       Produto,
     ]),
+    PedidosModule,
   ],
   providers: [MarketplaceSyncCron, CryptoService],
   exports: [MarketplaceSyncCron],

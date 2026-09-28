@@ -7,6 +7,7 @@ import { Pedido } from '../../pedidos/entities/pedido.entity.js';
 import { ItemPedido } from '../../pedidos/entities/item-pedido.entity.js';
 import { Produto } from '../../catalogo/entities/produto.entity.js';
 import { Logger } from '@nestjs/common';
+import { PedidosService } from '../../pedidos/pedidos.service.js';
 
 describe('MarketplaceSyncCron (Motor Assíncrono)', () => {
   let cron: MarketplaceSyncCron;
@@ -20,6 +21,10 @@ describe('MarketplaceSyncCron (Motor Assíncrono)', () => {
     decrypt: vi.fn(),
   };
 
+  const mockPedidosService = {
+    importarPedidoMarketplace: vi.fn(),
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +35,7 @@ describe('MarketplaceSyncCron (Motor Assíncrono)', () => {
         { provide: getRepositoryToken(ItemPedido), useValue: {} },
         { provide: getRepositoryToken(Produto), useValue: {} },
         { provide: CryptoService, useValue: mockCryptoService },
+        { provide: PedidosService, useValue: mockPedidosService },
       ],
     }).compile();
 

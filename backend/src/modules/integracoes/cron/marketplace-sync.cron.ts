@@ -8,6 +8,7 @@ import { Pedido } from '../../pedidos/entities/pedido.entity.js';
 import { ItemPedido } from '../../pedidos/entities/item-pedido.entity.js';
 import { Produto } from '../../catalogo/entities/produto.entity.js';
 import { IMarketplaceAdapter } from '../adapters/marketplace-adapter.interface.js';
+import { PedidosService } from '../../pedidos/pedidos.service.js';
 
 @Injectable()
 export class MarketplaceSyncCron {
@@ -23,6 +24,7 @@ export class MarketplaceSyncCron {
     @InjectRepository(Produto)
     private produtoRepo: Repository<Produto>,
     private cryptoService: CryptoService,
+    private pedidosService: PedidosService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES)
@@ -93,8 +95,18 @@ export class MarketplaceSyncCron {
   }
 
   private async salvarPedidosEmLote(integracao: IntegracaoMarketplace, pedidos: any[]) {
-     // A lógica de Bulk Insert aqui.
-     // Pelo TypeORM podemos montar os objetos Pedido e usar this.pedidoRepo.save([...])
-     // Para simplicidade, omitimos a montagem complexa dos itens_pedido.
+    for (const p of pedidos) {
+      try {
+        await this.pedidosService.importarPedidoMarketplace(
+          integracao.id, 
+          integracao.idEmpresa, 
+          p, 
+          p.itens
+        );
+      } catch (err: any) {
+        this.logger.error(`Erro ao importar pedido ${p.id_pedido_marketplace}: ${err.message}`);
+        // Continua para o próximo pedido para não travar o lote inteiro por causa de um produto sem estoque.
+      }
+    }
   }
 }

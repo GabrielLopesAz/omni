@@ -4,12 +4,24 @@ import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
+  if (process.env.NODE_ENV === 'production') {
+    const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET', 'FRONTEND_URL'];
+    const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+    
+    if (missingVars.length > 0) {
+      console.error(`FATAL: Faltando variáveis de ambiente obrigatórias para produção: ${missingVars.join(', ')}`);
+      process.exit(1);
+    }
+  }
+
   const app = await NestFactory.create(AppModule);
   
   // Security
   app.use(helmet());
   app.enableCors({
-    origin: '*', // Em produção, restringir isso
+    origin: process.env.NODE_ENV === 'production' 
+      ? (process.env.FRONTEND_URL || false) // Bloqueia se FRONTEND_URL não estiver configurada em prod
+      : '*', 
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
   

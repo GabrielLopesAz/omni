@@ -22,7 +22,16 @@ describe('LogisticaService (Bipagem)', () => {
   const mockAuditoriaService = {
     logAction: vi.fn(),
   };
-  const mockDataSource = {};
+  const mockEntityManager = {
+    find: vi.fn(),
+    save: vi.fn(),
+  };
+
+  const mockDataSource = {
+    transaction: vi.fn().mockImplementation(async (cb) => {
+      return cb(mockEntityManager);
+    }),
+  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -42,7 +51,7 @@ describe('LogisticaService (Bipagem)', () => {
 
   it('deve retornar Erro 400 (SKU Inválido) se bipar um produto que não está no pedido', async () => {
     mockPedidoRepo.findOne.mockResolvedValue({ id: '1', status: 'Pendente' });
-    mockItemRepo.find.mockResolvedValue([{ produto: { sku: 'SKU-CERTO' }, quantidade: 1 }]);
+    mockEntityManager.find.mockResolvedValue([{ produto: { sku: 'SKU-CERTO' }, quantidade: 1, quantidadeBipada: 0 }]);
 
     await expect(service.biparItem('1', 'SKU-ERRADO', 'user-1', '127.0.0.1'))
       .rejects.toThrow(BadRequestException);
@@ -54,9 +63,7 @@ describe('LogisticaService (Bipagem)', () => {
 
   it('deve retornar Erro 400 (QTD Excedida) ao tentar bipar produto além da quantidade (Regra RN-003)', async () => {
     mockPedidoRepo.findOne.mockResolvedValue({ id: '1', status: 'Pendente' });
-    // O mock no logistica.service hardcodeou quantidadeJaBipada = 0.
-    // Para forçar o erro no teste onde qtd = 0, se o pedido requer 0 itens, vai exceder.
-    mockItemRepo.find.mockResolvedValue([{ produto: { sku: 'SKU-LIMITE' }, quantidade: 0 }]);
+    mockEntityManager.find.mockResolvedValue([{ produto: { sku: 'SKU-LIMITE' }, quantidade: 1, quantidadeBipada: 1 }]);
 
     await expect(service.biparItem('1', 'SKU-LIMITE', 'user-1', '127.0.0.1'))
       .rejects.toThrow(new BadRequestException('Quantidade Excedida'));
@@ -69,13 +76,14 @@ describe('LogisticaService (Bipagem)', () => {
   it('deve registrar bipagem com sucesso e alterar status do pedido para EM_SEPARACAO', async () => {
     const pedido = { id: '1', status: 'Pendente', versao: 1 };
     mockPedidoRepo.findOne.mockResolvedValue(pedido);
-    mockItemRepo.find.mockResolvedValue([{ produto: { sku: 'SKU-OK' }, quantidade: 2 }]);
+    mockEntityManager.find.mockResolvedValue([{ id: 'item1', produto: { sku: 'SKU-OK' }, quantidade: 2, quantidadeBipada: 0 }]);
+    mockEntityManager.save.mockResolvedValue(pedido);
 
     const result = await service.biparItem('1', 'SKU-OK', 'user-1', '127.0.0.1');
     
     expect(result.message).toBe('Bipagem registrada com sucesso');
     expect(pedido.status).toBe('EM_SEPARACAO');
-    expect(mockPedidoRepo.save).toHaveBeenCalledWith(pedido);
+    expect(mockEntityManager.save).toHaveBeenCalledWith(Pedido, pedido);
     expect(mockAuditoriaService.logAction).toHaveBeenCalledWith(
       'BIPAGEM_SUCESSO', 'user-1', '127.0.0.1', 'itens_pedido', null, { sku: 'SKU-OK' }
     );

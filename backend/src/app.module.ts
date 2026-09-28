@@ -12,6 +12,7 @@ import { LogisticaModule } from './modules/logistica/logistica.module.js';
 import { CatalogoModule } from './modules/catalogo/catalogo.module.js';
 import { EmpresasModule } from './modules/empresas/empresas.module.js';
 import { UsuariosModule } from './modules/usuarios/usuarios.module.js';
+import { PedidosModule } from './modules/pedidos/pedidos.module.js';
 import { Empresa } from './modules/empresas/entities/empresa.entity.js';
 import { Role } from './modules/usuarios/entities/role.entity.js';
 import { Usuario } from './modules/usuarios/entities/usuario.entity.js';
@@ -24,25 +25,32 @@ import { AuditoriaLog } from './modules/auditoria/entities/auditoria-log.entity.
 import { Conferencia } from './modules/logistica/entities/conferencia.entity.js';
 import { SharedModule } from './shared/shared.module.js';
 
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{
       ttl: 5 * 60, // 5 minutos
-      limit: 5, // 5 requisições max
+      limit: 1000, // Ajustado de 5 para 1000 (rate limit real para ERP)
     }]),
     ScheduleModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '',
-      database: 'omni',
-      entities: [
-        Empresa, Role, Usuario, IntegracaoMarketplace, Produto, 
-        Estoque, Pedido, ItemPedido, AuditoriaLog, Conferencia
-      ],
-      synchronize: false, // Em produção e homologação deve ser false (usar migrations ou script sql base)
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('DB_HOST') || 'localhost',
+        port: configService.get<number>('DB_PORT') || 3306,
+        username: configService.get<string>('DB_USER') || 'root',
+        password: configService.get<string>('DB_PASSWORD') || '',
+        database: configService.get<string>('DB_NAME') || 'omni',
+        entities: [
+          Empresa, Role, Usuario, IntegracaoMarketplace, Produto, 
+          Estoque, Pedido, ItemPedido, AuditoriaLog, Conferencia
+        ],
+        synchronize: false,
+      }),
+      inject: [ConfigService],
     }),
     SharedModule,
     AuthModule,
@@ -52,6 +60,7 @@ import { SharedModule } from './shared/shared.module.js';
     AuditoriaModule,
     LogisticaModule,
     CatalogoModule,
+    PedidosModule,
   ],
   controllers: [AppController],
   providers: [

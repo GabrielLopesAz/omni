@@ -27,9 +27,10 @@ describe('CryptoService', () => {
     const secret = 'dado-super-secreto';
     let encrypted = service.encrypt(secret);
     
-    // Adulterando o payload
+    // Adulterando o payload de forma garantida
     const parts = encrypted.split(':');
-    parts[2] = parts[2].substring(0, parts[2].length - 1) + '0'; // modifica último caractere
+    const lastChar = parts[2].charAt(parts[2].length - 1);
+    parts[2] = parts[2].substring(0, parts[2].length - 1) + (lastChar === 'a' ? 'b' : 'a');
     const adulterated = parts.join(':');
 
     expect(() => service.decrypt(adulterated)).toThrow();
