@@ -152,17 +152,18 @@ export class CatalogoService {
         }
       }
 
-      // Audit Log
+      const estoqueFinal = await manager.findOne(Estoque, { where: { idProduto } });
+      if (!estoqueFinal) throw new NotFoundException('Estoque não encontrado após ajuste.');
+
+      // Audit Log transacional com valores reais
       await this.auditoriaService.logAction(
         'AJUSTE_ESTOQUE_MANUAL',
         idUsuario,
         'API',
         'estoque',
         { quantidadeDisponivel: estoqueAtual.quantidadeDisponivel, tipo, quantidade },
-        { 
-          quantidadeDisponivel: tipo === 'ENTRADA' ? estoqueAtual.quantidadeDisponivel + quantidade : estoqueAtual.quantidadeDisponivel - quantidade,
-          motivo 
-        }
+        { quantidadeDisponivel: estoqueFinal.quantidadeDisponivel, motivo },
+        manager
       );
 
       return manager.findOne(Estoque, { where: { idProduto } });

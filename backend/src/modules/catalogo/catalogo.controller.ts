@@ -59,7 +59,8 @@ export class CatalogoController {
   ) {
     const idEmpresa = req.user?.empresaId;
     if (!idEmpresa) throw new UnauthorizedException('Empresa não identificada no contexto do usuário.');
-    const idUsuario = req.user?.id || 'system';
+    const idUsuario = req.user?.userId;
+      if (!idUsuario) throw new UnauthorizedException('Usuário não identificado no contexto.');
     return this.catalogoService.ajustarEstoque(id, body.quantidade, body.tipo, body.motivo, idEmpresa, idUsuario);
   }
 }

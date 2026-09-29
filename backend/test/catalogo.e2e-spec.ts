@@ -106,4 +106,32 @@ describe('Catálogo e Estoque (e2e)', () => {
     // O importante é que a soma aumentou exatos 7 a partir do saldo intermediário.
     expect(Number(estoqueFinal.quantidade_disponivel)).toBe(Number(estoqueDb.quantidade_disponivel) + 7);
   });
+
+  it('deve falhar a transação se o log de auditoria falhar (Rollback)', async () => {
+    const prod = await catalogoService.create({ sku: 'SKU-ROLLBACK', nome: 'Rollback', precoBase: 10, estoqueInicial: 10 }, 'emp-a');
+    
+    try {
+      // usr-invalido vai violar FK da auditoria
+      await catalogoService.ajustarEstoque(prod.id, 5, 'ENTRADA', 'Teste rollback log', 'emp-a', 'usr-invalido');
+    } catch (e: any) {
+      expect(e.message).toContain('a foreign key constraint fails');
+    }
+
+    const p = await catalogoService.findOne(prod.id, 'emp-a');
+    expect(Number(p.estoque.quantidadeDisponivel)).toBe(10); // não alterou o estoque pois falhou na auditoria
+  });
+
+  it('não deve criar log se falhar o estoque por saldo insuficiente', async () => {
+    const prod = await catalogoService.create({ sku: 'SKU-NO-LOG', nome: 'No Log', precoBase: 10, estoqueInicial: 10 }, 'emp-a');
+
+    try {
+      await catalogoService.ajustarEstoque(prod.id, 20, 'SAIDA', 'Saída inválida', 'emp-a', 'usr1');
+    } catch (e: any) {
+      expect(e.message).toContain('Estoque insuficiente');
+    }
+
+    // Confirma que não gerou log de sucesso
+    const logs = await dataSource.query(`SELECT * FROM auditoria_logs WHERE tabela_afetada = 'estoque' AND dados_novos LIKE '%Saída inválida%'`);
+    expect(logs.length).toBe(0);
+  });
 });

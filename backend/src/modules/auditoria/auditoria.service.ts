@@ -17,8 +17,10 @@ export class AuditoriaService {
     tabelaAfetada?: string,
     dadosAntigos?: any,
     dadosNovos?: any,
+    manager?: any
   ) {
-    const log = this.logRepository.create({
+    const repo = manager ? manager.getRepository(AuditoriaLog) : this.logRepository;
+    const log = repo.create({
       acao,
       idUsuario,
       ipAddress,
@@ -26,6 +28,6 @@ export class AuditoriaService {
       dadosAntigos,
       dadosNovos,
     });
-    return this.logRepository.save(log);
+    return repo.save(log);
   }
 }

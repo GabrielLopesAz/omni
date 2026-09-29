@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
+import axios from "axios";
+import axios from "axios";
 
 interface Produto {
   id: string;
@@ -32,6 +34,7 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
   const [produtoId, setProdutoId] = useState("");
   const [tipo, setTipo] = useState<"ENTRADA" | "SAIDA">(defaultType);
   const [quantidade, setQuantidade] = useState("");
+  const [motivo, setMotivo] = useState("");
   const [openCombobox, setOpenCombobox] = useState(false);
 
   // Update default type when it changes from props
@@ -40,6 +43,7 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
       setTipo(defaultType);
       setProdutoId("");
       setQuantidade("");
+      setMotivo("");
       setOpenCombobox(false);
     }
   }, [open, defaultType]);
@@ -60,7 +64,12 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
     setLoading(true);
 
     try {
-      await estoqueService.ajustarEstoque(produtoId, qtd, tipo);
+      if (motivo.trim().length < 3) {
+      toast({ variant: "destructive", title: "Atenção", description: "O motivo deve ter pelo menos 3 caracteres." });
+      setLoading(false);
+      return;
+    }
+    await estoqueService.ajustarEstoque(produtoId, qtd, tipo, motivo.trim());
       
       toast({ 
         title: "Sucesso", 
@@ -70,8 +79,8 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
       onOpenChange(false);
     } catch (error: unknown) {
       let msg = "Ocorreu um erro ao movimentar o estoque.";
-      if (error && typeof error === 'object' && 'response' in error) {
-        msg = (error as any).response?.data?.message || msg;
+      if (axios.isAxiosError(error)) {
+        msg = error.response?.data?.message || msg;
       } else if (error instanceof Error) {
         msg = error.message;
       }
@@ -164,6 +173,12 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
               </Popover>
             </div>
 
+            <div className="grid gap-4">
+              <div className="space-y-1 flex flex-col">
+                <label className="text-xs font-semibold">Motivo</label>
+                <Input required value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex: Recebimento fornecedor" />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1 flex flex-col">
                 <label className="text-xs font-semibold">Tipo de Movimento</label>
