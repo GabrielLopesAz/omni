@@ -3,6 +3,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { LogisticaService } from './logistica.service.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
+import { BipagemDto } from './dto/bipagem.dto.js';
 
 @Controller('api/v1')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -24,7 +25,7 @@ export class LogisticaController {
   @Roles('CONFERENTE', 'ADMIN', 'GERENTE')
   async biparItem(
     @Param('id_pedido') idPedido: string,
-    @Body('sku') sku: string,
+    @Body() body: BipagemDto,
     @Req() req: any,
   ) {
     const idEmpresa = req.user?.empresaId;
@@ -32,7 +33,7 @@ export class LogisticaController {
     const idUsuario = req.user?.userId;
     if (!idUsuario) throw new UnauthorizedException('Usuário não identificado no contexto');
     const ip = req.ip;
-    return this.logisticaService.biparItem(idPedido, sku, idUsuario, ip, idEmpresa);
+    return this.logisticaService.biparItem(idPedido, body.sku, idUsuario, ip, idEmpresa);
   }
 
   @Post('logistica/pedidos/:id/expedir')
