@@ -17,6 +17,7 @@ import { Empresa } from './modules/empresas/entities/empresa.entity.js';
 import { Role } from './modules/usuarios/entities/role.entity.js';
 import { Usuario } from './modules/usuarios/entities/usuario.entity.js';
 import { IntegracaoMarketplace } from './modules/integracoes/entities/integracao-marketplace.entity.js';
+import { OAuthState } from './modules/integracoes/entities/oauth-state.entity.js';
 import { Produto } from './modules/catalogo/entities/produto.entity.js';
 import { Estoque } from './modules/catalogo/entities/estoque.entity.js';
 import { Pedido } from './modules/pedidos/entities/pedido.entity.js';
@@ -45,7 +46,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         password: configService.get<string>('DB_PASSWORD') || '',
         database: configService.get<string>('DB_NAME') || 'omni',
         entities: [
-          Empresa, Role, Usuario, IntegracaoMarketplace, Produto, 
+          Empresa, Role, Usuario, IntegracaoMarketplace, OAuthState, Produto, 
           Estoque, Pedido, ItemPedido, AuditoriaLog, Conferencia
         ],
         synchronize: false,

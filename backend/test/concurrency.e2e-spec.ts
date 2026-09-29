@@ -51,7 +51,7 @@ describe('Concorrência Banco de Dados (e2e)', () => {
 
     // Setup de Dados Reais
     await dataSource.query(`INSERT INTO empresas (id, nome, cnpj) VALUES (?, 'Empresa Teste', '00000000000000')`, [idEmpresa]);
-    await dataSource.query(`INSERT INTO integracoes_marketplace (id, id_empresa, nome, credenciais) VALUES (?, ?, 'Mercado Livre', '{}')`, [idIntegracao, idEmpresa]);
+    await dataSource.query(`INSERT INTO integracoes_marketplace (id, id_empresa, provider, nome) VALUES (?, ?, 'SHOPEE', 'Mercado Livre')`, [idIntegracao, idEmpresa]);
     await dataSource.query(`INSERT INTO produtos (id, id_empresa, nome, sku) VALUES (?, ?, 'Produto Teste', ?)`, [idProduto, idEmpresa, sku]);
     await dataSource.query(`INSERT INTO estoque (id_produto, quantidade_disponivel, quantidade_reservada) VALUES (?, 10, 0)`, [idProduto]);
 

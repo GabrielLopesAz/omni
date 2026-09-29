@@ -1,3 +1,4 @@
+﻿import { IntegracoesTab } from "./IntegracoesTab";
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,16 +31,16 @@ import { api } from "@/services/api";
 
 // ======================== SCHEMAS ZOD ========================
 const tenantSchema = z.object({
-  razaoSocial: z.string().min(3, "Razão Social deve ter no mínimo 3 caracteres"),
-  nomeFantasia: z.string().min(2, "Nome Fantasia obrigatório"),
-  cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$/, "CNPJ inválido (Ex: 12.345.678/0001-99)"),
+  razaoSocial: z.string().min(3, "RazÃ£o Social deve ter no mÃ­nimo 3 caracteres"),
+  nomeFantasia: z.string().min(2, "Nome Fantasia obrigatÃ³rio"),
+  cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}$/, "CNPJ invÃ¡lido (Ex: 12.345.678/0001-99)"),
   inscricaoEstadual: z.string().optional(),
 });
 
 const userSchema = z.object({
   id: z.string().optional(),
-  nome: z.string().min(3, "Nome completo é obrigatório"),
-  email: z.string().email("E-mail inválido"),
+  nome: z.string().min(3, "Nome completo Ã© obrigatÃ³rio"),
+  email: z.string().email("E-mail invÃ¡lido"),
   role: z.enum(["ADMIN", "GERENTE", "CONFERENTE", "FINANCEIRO"]),
   senhaTemporaria: z.string().optional(),
 });
@@ -108,7 +109,7 @@ export default function Configuracoes() {
       toast({ title: "Sucesso", description: "Dados da empresa atualizados com sucesso." });
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar os dados da empresa." });
+      toast({ variant: "destructive", title: "Erro", description: "NÃ£o foi possÃ­vel salvar os dados da empresa." });
     }
   });
 
@@ -126,10 +127,10 @@ export default function Configuracoes() {
       setIsUserModalOpen(false);
       userForm.reset();
       setEditingUserId(null);
-      toast({ title: "Sucesso", description: "Dados do usuário salvos com sucesso." });
+      toast({ title: "Sucesso", description: "Dados do usuÃ¡rio salvos com sucesso." });
     },
     onError: () => {
-      toast({ variant: "destructive", title: "Erro", description: "Erro ao salvar usuário." });
+      toast({ variant: "destructive", title: "Erro", description: "Erro ao salvar usuÃ¡rio." });
     }
   });
 
@@ -139,7 +140,7 @@ export default function Configuracoes() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      toast({ title: "Removido", description: "O usuário foi excluído." });
+      toast({ title: "Removido", description: "O usuÃ¡rio foi excluÃ­do." });
     }
   });
 
@@ -163,8 +164,8 @@ export default function Configuracoes() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as preferências da sua conta, usuários e integrações (RBAC Admin/Gerente).</p>
+        <h1 className="text-3xl font-bold tracking-tight">ConfiguraÃ§Ãµes</h1>
+        <p className="text-muted-foreground">Gerencie as preferÃªncias da sua conta, usuÃ¡rios e integraÃ§Ãµes (RBAC Admin/Gerente).</p>
       </div>
 
       <Tabs defaultValue="empresa" className="space-y-6">
@@ -173,10 +174,10 @@ export default function Configuracoes() {
             Empresa
           </TabsTrigger>
           <TabsTrigger value="usuarios" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 px-6">
-            Usuários e Permissões
+            UsuÃ¡rios e PermissÃµes
           </TabsTrigger>
           <TabsTrigger value="integracoes" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 px-6">
-            Integrações ERP
+            IntegraÃ§Ãµes ERP
           </TabsTrigger>
         </TabsList>
         
@@ -185,7 +186,7 @@ export default function Configuracoes() {
           <Card>
             <CardHeader>
               <CardTitle>Dados do Tenant</CardTitle>
-              <CardDescription>Atualize as informações da sua conta corporativa.</CardDescription>
+              <CardDescription>Atualize as informaÃ§Ãµes da sua conta corporativa.</CardDescription>
             </CardHeader>
             <CardContent>
               {loadEmpresa ? (
@@ -194,7 +195,7 @@ export default function Configuracoes() {
                 <form onSubmit={tenantForm.handleSubmit((d) => mutationEmpresa.mutate(d))} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Razão Social</Label>
+                      <Label>RazÃ£o Social</Label>
                       <Input {...tenantForm.register("razaoSocial")} />
                       {tenantForm.formState.errors.razaoSocial && <span className="text-xs text-rose-500">{tenantForm.formState.errors.razaoSocial.message}</span>}
                     </div>
@@ -208,13 +209,13 @@ export default function Configuracoes() {
                       {tenantForm.formState.errors.cnpj && <span className="text-xs text-rose-500">{tenantForm.formState.errors.cnpj.message}</span>}
                     </div>
                     <div className="space-y-2">
-                      <Label>Inscrição Estadual</Label>
+                      <Label>InscriÃ§Ã£o Estadual</Label>
                       <Input {...tenantForm.register("inscricaoEstadual")} />
                     </div>
                   </div>
                   <Button type="submit" disabled={mutationEmpresa.isPending}>
                     {mutationEmpresa.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Salvar Alterações
+                    Salvar AlteraÃ§Ãµes
                   </Button>
                 </form>
               )}
@@ -222,23 +223,23 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
 
-        {/* ===================== ABA USUÁRIOS ===================== */}
+        {/* ===================== ABA USUÃRIOS ===================== */}
         <TabsContent value="usuarios" className="animate-in fade-in">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Gestão de Usuários</CardTitle>
-                <CardDescription>Gerencie operadores e permissões de acesso com dados reais do banco.</CardDescription>
+                <CardTitle>GestÃ£o de UsuÃ¡rios</CardTitle>
+                <CardDescription>Gerencie operadores e permissÃµes de acesso com dados reais do banco.</CardDescription>
               </div>
               <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={handleNewUser}><Plus className="mr-2 h-4 w-4" /> Novo Usuário</Button>
+                  <Button onClick={handleNewUser}><Plus className="mr-2 h-4 w-4" /> Novo UsuÃ¡rio</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>{editingUserId ? 'Editar Usuário' : 'Adicionar Novo Usuário'}</DialogTitle>
+                    <DialogTitle>{editingUserId ? 'Editar UsuÃ¡rio' : 'Adicionar Novo UsuÃ¡rio'}</DialogTitle>
                     <DialogDescription>
-                      {editingUserId ? 'Modifique os dados ou redefina a senha.' : 'O novo usuário receberá as instruções por e-mail.'}
+                      {editingUserId ? 'Modifique os dados ou redefina a senha.' : 'O novo usuÃ¡rio receberÃ¡ as instruÃ§Ãµes por e-mail.'}
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={userForm.handleSubmit((d) => mutationUsuario.mutate(d))} className="space-y-4 py-4">
@@ -253,7 +254,7 @@ export default function Configuracoes() {
                       {userForm.formState.errors.email && <span className="text-xs text-rose-500">{userForm.formState.errors.email.message}</span>}
                     </div>
                     <div className="space-y-2">
-                      <Label>Nível de Acesso (Role)</Label>
+                      <Label>NÃ­vel de Acesso (Role)</Label>
                       <Select 
                         onValueChange={(val) => userForm.setValue("role", val as any)}
                         value={userForm.watch("role")}
@@ -270,7 +271,7 @@ export default function Configuracoes() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>{editingUserId ? 'Nova Senha (opcional)' : 'Senha Temporária'}</Label>
+                      <Label>{editingUserId ? 'Nova Senha (opcional)' : 'Senha TemporÃ¡ria'}</Label>
                       <Input type="password" {...userForm.register("senhaTemporaria")} />
                       {userForm.formState.errors.senhaTemporaria && <span className="text-xs text-rose-500">{userForm.formState.errors.senhaTemporaria.message}</span>}
                     </div>
@@ -297,7 +298,7 @@ export default function Configuracoes() {
                         <th className="p-3 text-left">E-mail</th>
                         <th className="p-3 text-left">Role</th>
                         <th className="p-3 text-left">Status</th>
-                        <th className="p-3 text-right">Ações</th>
+                        <th className="p-3 text-right">AÃ§Ãµes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -319,7 +320,7 @@ export default function Configuracoes() {
                             <Button variant="ghost" size="icon" onClick={() => handleEditUser(u)}>
                               <Pencil className="h-4 w-4 text-muted-foreground" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if(confirm('Excluir este usuário?')) mutationDeleteUsuario.mutate(u.id); }}>
+                            <Button variant="ghost" size="icon" onClick={() => { if(confirm('Excluir este usuÃ¡rio?')) mutationDeleteUsuario.mutate(u.id); }}>
                               <Trash2 className="h-4 w-4 text-rose-500" />
                             </Button>
                           </td>
@@ -330,28 +331,20 @@ export default function Configuracoes() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-md">
-                  Nenhum usuário retornado pela API real. 
+                  Nenhum usuÃ¡rio retornado pela API real. 
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ===================== ABA INTEGRAÇÕES ===================== */}
+        {/* ===================== ABA INTEGRAÃ‡Ã•ES ===================== */}
         <TabsContent value="integracoes" className="animate-in fade-in">
-          <Card className="border-dashed border-2 bg-muted/20">
-            <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-20 w-20 bg-background border shadow-sm rounded-full flex items-center justify-center mb-6">
-                <Lock className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Módulo em Desenvolvimento</h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                A integração de ERPs e Marketplaces (Shopee, Mercado Livre, Nuvemshop) via arquitetura de Polling está em fase de estruturação. Em breve as conexões estarão disponíveis.
-              </p>
-            </CardContent>
-          </Card>
+          <IntegracoesTab />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
+
+

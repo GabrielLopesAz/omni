@@ -21,43 +21,43 @@ export class IntegracaoMarketplace {
   nome: string;
 
   @Column({ type: 'varchar', length: 100, name: 'external_account_id', nullable: true })
-  externalAccountId: string;
+  externalAccountId: string | null;
 
   @Column({ type: 'varchar', length: 255, name: 'external_account_name', nullable: true })
-  externalAccountName: string;
+  externalAccountName: string | null;
 
   @Column({ type: 'varchar', length: 50, default: 'PENDENTE' })
   status: string;
 
   @Column({ type: 'text', name: 'access_token_encrypted', nullable: true })
-  accessTokenEncrypted: string;
+  accessTokenEncrypted: string | null;
 
   @Column({ type: 'text', name: 'refresh_token_encrypted', nullable: true })
-  refreshTokenEncrypted: string;
+  refreshTokenEncrypted: string | null;
 
   @Column({ type: 'timestamp', name: 'token_expires_at', nullable: true })
-  tokenExpiresAt: Date;
+  tokenExpiresAt: Date | null;
 
   @Column({ type: 'text', nullable: true })
-  scopes: string;
+  scopes: string | null;
 
   @Column({ type: 'timestamp', name: 'connected_at', nullable: true })
-  connectedAt: Date;
+  connectedAt: Date | null;
 
   @Column({ type: 'timestamp', name: 'disconnected_at', nullable: true })
-  disconnectedAt: Date;
+  disconnectedAt: Date | null;
 
   @Column({ type: 'timestamp', name: 'last_sync_at', nullable: true })
-  lastSyncAt: Date;
+  lastSyncAt: Date | null;
 
   @Column({ type: 'timestamp', name: 'last_success_at', nullable: true })
-  lastSuccessAt: Date;
+  lastSuccessAt: Date | null;
 
   @Column({ type: 'timestamp', name: 'last_error_at', nullable: true })
-  lastErrorAt: Date;
+  lastErrorAt: Date | null;
 
   @Column({ type: 'text', name: 'last_error', nullable: true })
-  lastError: string;
+  lastError: string | null;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
