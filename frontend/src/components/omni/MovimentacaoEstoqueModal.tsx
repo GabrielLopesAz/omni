@@ -10,7 +10,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import axios from "axios";
-import axios from "axios";
 
 interface Produto {
   id: string;

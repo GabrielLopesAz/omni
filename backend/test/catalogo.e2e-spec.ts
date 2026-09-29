@@ -22,6 +22,7 @@ describe('Catálogo e Estoque (e2e)', () => {
     catalogoService = moduleFixture.get<CatalogoService>(CatalogoService);
 
     // Setup de Empresas de teste para Multi-tenant
+    await dataSource.query(`DELETE FROM auditoria_logs`);
     await dataSource.query(`DELETE FROM estoque WHERE id_produto IN (SELECT id FROM produtos WHERE id_empresa IN ('emp-a', 'emp-b'))`);
     await dataSource.query(`DELETE FROM itens_pedido WHERE id_produto IN (SELECT id FROM produtos WHERE id_empresa IN ('emp-a', 'emp-b'))`);
     await dataSource.query(`DELETE FROM pedidos WHERE id_empresa IN ('emp-a', 'emp-b')`);
@@ -76,15 +77,13 @@ describe('Catálogo e Estoque (e2e)', () => {
     const idProduto = prod.id;
 
     // Concorrência SAÍDA (A=7, B=5) -> apenas um deve passar
-    const reqA = catalogoService.ajustarEstoque(idProduto, 7, 'SAIDA', 'Test', 'emp-a', 'usr1');
-    const reqB = catalogoService.ajustarEstoque(idProduto, 5, 'SAIDA', 'Test', 'emp-a', 'usr1');
+    const reqA = catalogoService.ajustarEstoque(idProduto, 7, 'SAIDA', 'TestA', 'emp-a', 'usr1');
+    const reqB = catalogoService.ajustarEstoque(idProduto, 5, 'SAIDA', 'TestB', 'emp-a', 'usr1');
 
     const results = await Promise.allSettled([reqA, reqB]);
     
     const success = results.filter(r => r.status === 'fulfilled');
     const errors = results.filter(r => r.status === 'rejected');
-
-    if (success.length !== 1) console.log(errors);
 
     expect(success.length).toBe(1);
     expect(errors.length).toBe(1);
@@ -95,16 +94,40 @@ describe('Catálogo e Estoque (e2e)', () => {
     // O saldo deve ser 10 - 7 = 3 (ou 10 - 5 = 5)
     expect(Number(estoqueDb.quantidade_disponivel)).toBeGreaterThanOrEqual(3);
 
+    // Logs SAIDA
+    const logsSaida = await dataSource.query(`SELECT * FROM auditoria_logs WHERE tabela_afetada = 'estoque' AND dados_novos LIKE '%Test%'`);
+    expect(logsSaida.length).toBe(1);
+    const logS = logsSaida[0];
+    const oldDados = JSON.parse(logS.dados_antigos);
+    const newDados = JSON.parse(logS.dados_novos);
+    
+    expect(oldDados.quantidadeDisponivel).toBe(10);
+    expect(newDados.quantidadeDisponivel).toBe(Number(estoqueDb.quantidade_disponivel));
+    expect(newDados.motivo).toMatch(/TestA|TestB/);
+    expect(logS.id_usuario).toBe('usr1');
+
     // Concorrência ENTRADA (+3, +4)
-    const inA = catalogoService.ajustarEstoque(idProduto, 3, 'ENTRADA', 'Test', 'emp-a', 'usr1');
-    const inB = catalogoService.ajustarEstoque(idProduto, 4, 'ENTRADA', 'Test', 'emp-a', 'usr1');
+    const inA = catalogoService.ajustarEstoque(idProduto, 3, 'ENTRADA', 'TestInA', 'emp-a', 'usr1');
+    const inB = catalogoService.ajustarEstoque(idProduto, 4, 'ENTRADA', 'TestInB', 'emp-a', 'usr1');
 
     await Promise.all([inA, inB]);
 
     let [estoqueFinal] = await dataSource.query(`SELECT * FROM estoque WHERE id_produto = ?`, [idProduto]);
-    // Saldo anterior (3) + 7 = 10 (ou se B passou primeiro, 5 + 7 = 12)
-    // O importante é que a soma aumentou exatos 7 a partir do saldo intermediário.
     expect(Number(estoqueFinal.quantidade_disponivel)).toBe(Number(estoqueDb.quantidade_disponivel) + 7);
+
+    // Logs ENTRADA
+    const logsEntrada = await dataSource.query(`SELECT * FROM auditoria_logs WHERE tabela_afetada = 'estoque' AND dados_novos LIKE '%TestIn%' ORDER BY created_at ASC`);
+    expect(logsEntrada.length).toBe(2);
+    
+    const log1 = JSON.parse(logsEntrada[0].dados_antigos);
+    const log1N = JSON.parse(logsEntrada[0].dados_novos);
+    
+    const log2 = JSON.parse(logsEntrada[1].dados_antigos);
+    const log2N = JSON.parse(logsEntrada[1].dados_novos);
+
+    // Garante que eles estão encadeados, independentemente de quem venceu primeiro
+    expect(log1N.quantidadeDisponivel).toBe(log2.quantidadeDisponivel);
+    expect(log2N.quantidadeDisponivel).toBe(Number(estoqueFinal.quantidade_disponivel));
   });
 
   it('deve falhar a transação se o log de auditoria falhar (Rollback)', async () => {

@@ -128,7 +128,10 @@ export class CatalogoService {
       // Let's use atomic update statement.
       const queryRunner = manager.queryRunner;
       
-      const estoqueAtual = await manager.findOne(Estoque, { where: { idProduto } });
+      const estoqueAtual = await manager.findOne(Estoque, { 
+        where: { idProduto }, 
+        lock: { mode: 'pessimistic_write' } 
+      });
       if (!estoqueAtual) throw new NotFoundException('Estoque não inicializado para este produto.');
 
       let affected = 0;
