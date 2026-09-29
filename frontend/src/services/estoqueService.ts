@@ -1,12 +1,17 @@
-import axios from 'axios';
-import { getApiUrl } from '@/config/api';
+import { api } from '@/services/api';
 
-const API_URL = getApiUrl();
+export interface EstoqueResponse {
+  id: string;
+  idProduto: string;
+  quantidadeDisponivel: number;
+  quantidadeReservada: number;
+  updatedAt: string;
+}
 
 export const estoqueService = {
   // Ajusta o estoque via endpoint de ajuste (ENTRADA ou SAIDA)
-  async ajustarEstoque(idProduto: string, quantidade: number, tipo: 'ENTRADA' | 'SAIDA'): Promise<unknown> {
-    const response = await axios.put(`${API_URL}/produtos/${idProduto}/estoque`, { quantidade, tipo });
+  async ajustarEstoque(idProduto: string, quantidade: number, tipo: 'ENTRADA' | 'SAIDA'): Promise<EstoqueResponse> {
+    const response = await api.put(`/produtos/${idProduto}/estoque`, { quantidade, tipo });
     return response.data;
   }
 };

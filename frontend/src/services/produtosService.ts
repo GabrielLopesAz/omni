@@ -1,7 +1,4 @@
-import axios from 'axios';
-import { getApiUrl } from '@/config/api';
-
-const API_URL = getApiUrl();
+import { api } from '@/services/api';
 
 export interface Produto {
   id: string;
@@ -21,27 +18,27 @@ export interface Produto {
 
 export const produtosService = {
   async listarProdutos(): Promise<Produto[]> {
-    const response = await axios.get(`${API_URL}/produtos`);
+    const response = await api.get('/produtos');
     return response.data;
   },
 
   async buscarProduto(id: string): Promise<Produto> {
-    const response = await axios.get(`${API_URL}/produtos/${id}`);
+    const response = await api.get(`/produtos/${id}`);
     return response.data;
   },
 
   async criarProduto(produto: Partial<Produto> & { estoqueInicial?: number }): Promise<Produto> {
-    const response = await axios.post(`${API_URL}/produtos`, produto);
+    const response = await api.post('/produtos', produto);
     return response.data;
   },
 
   async atualizarProduto(id: string, produto: Partial<Produto>): Promise<Produto> {
-    const response = await axios.put(`${API_URL}/produtos/${id}`, produto);
+    const response = await api.put(`/produtos/${id}`, produto);
     return response.data;
   },
 
   async excluirProduto(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await axios.delete(`${API_URL}/produtos/${id}`);
+    const response = await api.delete(`/produtos/${id}`);
     return response.data;
   }
 };

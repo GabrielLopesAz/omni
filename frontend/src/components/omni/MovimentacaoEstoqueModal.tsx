@@ -68,8 +68,13 @@ export default function MovimentacaoEstoqueModal({ open, onOpenChange, produtos,
       });
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Ocorreu um erro ao movimentar o estoque.";
+    } catch (error: unknown) {
+      let msg = "Ocorreu um erro ao movimentar o estoque.";
+      if (error && typeof error === 'object' && 'response' in error) {
+        msg = (error as any).response?.data?.message || msg;
+      } else if (error instanceof Error) {
+        msg = error.message;
+      }
       toast({ variant: "destructive", title: "Erro", description: msg });
     } finally {
       setLoading(false);
