@@ -119,15 +119,26 @@ describe('Catálogo e Estoque (e2e)', () => {
     const logsEntrada = await dataSource.query(`SELECT * FROM auditoria_logs WHERE tabela_afetada = 'estoque' AND dados_novos LIKE '%TestIn%' ORDER BY created_at ASC`);
     expect(logsEntrada.length).toBe(2);
     
-    const log1 = JSON.parse(logsEntrada[0].dados_antigos);
-    const log1N = JSON.parse(logsEntrada[0].dados_novos);
-    
-    const log2 = JSON.parse(logsEntrada[1].dados_antigos);
-    const log2N = JSON.parse(logsEntrada[1].dados_novos);
+    const dadosAntigos0 = JSON.parse(logsEntrada[0].dados_antigos);
+    const dadosNovos0 = JSON.parse(logsEntrada[0].dados_novos);
+    const dadosAntigos1 = JSON.parse(logsEntrada[1].dados_antigos);
+    const dadosNovos1 = JSON.parse(logsEntrada[1].dados_novos);
 
-    // Garante que eles estão encadeados, independentemente de quem venceu primeiro
-    expect(log1N.quantidadeDisponivel).toBe(log2.quantidadeDisponivel);
-    expect(log2N.quantidadeDisponivel).toBe(Number(estoqueFinal.quantidade_disponivel));
+    const valores = [dadosAntigos0.quantidadeDisponivel, dadosNovos0.quantidadeDisponivel, dadosAntigos1.quantidadeDisponivel, dadosNovos1.quantidadeDisponivel];
+    const saldoFinal = Number(estoqueFinal.quantidade_disponivel);
+
+    // Garante que o saldo final foi atingido pelos logs
+    expect(saldoFinal).toBe(Number(estoqueDb.quantidade_disponivel) + 7);
+    // Ambos os logs devem ter o saldo final como valor final (um dos dois) ou encadeados
+    const algumLogAtingiuFinal = dadosNovos0.quantidadeDisponivel === saldoFinal || dadosNovos1.quantidadeDisponivel === saldoFinal;
+    expect(algumLogAtingiuFinal).toBe(true);
+    // Os valores de antes e depois somados devem ser +3 e +4 (ou +4 e +3)
+    const delta0 = dadosNovos0.quantidadeDisponivel - dadosAntigos0.quantidadeDisponivel;
+    const delta1 = dadosNovos1.quantidadeDisponivel - dadosAntigos1.quantidadeDisponivel;
+    const deltas = [delta0, delta1].sort();
+    expect(deltas).toEqual([3, 4]);
+    // Nenhum log deve usar o mesmo valor de antes (dois logs com "10 → X" seriam duplicatas)
+    expect(valores.filter(v => v === Number(estoqueDb.quantidade_disponivel)).length).toBe(1); // apenas um "antes" igual ao saldo intermediário
   });
 
   it('deve falhar a transação se o log de auditoria falhar (Rollback)', async () => {

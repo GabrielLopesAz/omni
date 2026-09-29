@@ -1,386 +1,390 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScanLine, CheckSquare, AlertTriangle, ArrowRight, Package, Image as ImageIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  ScanLine, CheckSquare, XCircle, Package, Search, Loader2,
+  CheckCircle2, AlertCircle, ShipIcon
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { logisticaService, type PedidoConferencia, type ItemConferencia } from "@/services/logisticaService";
+import axios from "axios";
 
-type StatusItem = 'pendente' | 'conferido' | 'problema';
+type ScanFeedback = { type: 'success' | 'error'; message: string } | null;
 
-interface ItemPedido {
-  id: string;
-  sku: string;
-  name: string;
-  color: string;
-  size: string;
-  image: string;
-  status: StatusItem;
-  checked: boolean;
-}
-
-interface Pedido {
-  id: string;
-  status: string;
-  items: ItemPedido[];
+function playBeep(success: boolean) {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = success ? 880 : 220;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {
+    // Web Audio API pode não estar disponível
+  }
 }
 
 export default function Conferencia() {
   const [orderBarcode, setOrderBarcode] = useState("");
-  const [currentOrder, setCurrentOrder] = useState<Pedido | null>(null);
-  const [activeItem, setActiveItem] = useState<ItemPedido | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [pedido, setPedido] = useState<PedidoConferencia | null>(null);
+  const [loadingPedido, setLoadingPedido] = useState(false);
+  const [scanInput, setScanInput] = useState("");
+  const [loadingScan, setLoadingScan] = useState(false);
+  const [loadingExpedir, setLoadingExpedir] = useState(false);
+  const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null);
+  const [lastScannedSku, setLastScannedSku] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [isProblemModalOpen, setIsProblemModalOpen] = useState(false);
-  const [problemReason, setProblemReason] = useState("");
+  const scanInputRef = useRef<HTMLInputElement>(null);
+  const orderInputRef = useRef<HTMLInputElement>(null);
 
-  const handleScanOrder = async (e: React.FormEvent) => {
+  // Foco automático no campo de pedido ao montar
+  useEffect(() => {
+    orderInputRef.current?.focus();
+  }, []);
+
+  // Volta foco para scanner após feedback
+  useEffect(() => {
+    if (pedido && !loadingScan) {
+      setTimeout(() => scanInputRef.current?.focus(), 100);
+    }
+  }, [pedido, loadingScan]);
+
+  const handleBuscarPedido = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderBarcode.trim() || loading) return;
+    const id = orderBarcode.trim();
+    if (!id || loadingPedido) return;
 
-    setLoading(true);
+    setLoadingPedido(true);
+    setPedido(null);
+    setScanFeedback(null);
+    setLastScannedSku(null);
 
     try {
-      // Simulação da busca de pedido pela API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const mockedOrder: Pedido = {
-        id: orderBarcode.toUpperCase(),
-        status: 'Em Separação',
-        items: [
-          { 
-            id: '1', 
-            sku: 'SKU-10045', 
-            name: 'Camiseta Oversized Preta', 
-            color: 'Preto', 
-            size: 'M', 
-            image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=200&auto=format&fit=crop', 
-            status: 'pendente', 
-            checked: false 
-          },
-          { 
-            id: '2', 
-            sku: 'SKU-10089', 
-            name: 'Moletom Premium Branco', 
-            color: 'Branco', 
-            size: 'G', 
-            image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?q=80&w=200&auto=format&fit=crop', 
-            status: 'pendente', 
-            checked: false 
-          },
-          { 
-            id: '3', 
-            sku: 'SKU-10012', 
-            name: 'Camiseta Anime Edition', 
-            color: 'Branca/Estampa', 
-            size: 'P', 
-            image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=200&auto=format&fit=crop', 
-            status: 'pendente', 
-            checked: false 
-          }
-        ]
-      };
-
-      setCurrentOrder(mockedOrder);
-      setActiveItem(null); // Reseta o item ativo ao buscar novo pedido
+      const data = await logisticaService.getPedido(id);
+      setPedido(data);
       setOrderBarcode("");
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao buscar pedido",
-        description: "Pedido não encontrado ou inválido.",
-      });
+      // Foco no scanner após carregar
+      setTimeout(() => scanInputRef.current?.focus(), 150);
+    } catch (error: unknown) {
+      let msg = "Erro ao buscar pedido.";
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) msg = "Pedido não encontrado.";
+        else if (error.response?.status === 400) msg = error.response?.data?.message || "Pedido inválido.";
+        else if (error.response?.status === 401) msg = "Não autorizado.";
+        else if (error.response?.status === 403) msg = "Sem permissão para acessar este pedido.";
+        else msg = error.response?.data?.message || msg;
+      }
+      toast({ variant: "destructive", title: "Erro", description: msg });
+      orderInputRef.current?.focus();
     } finally {
-      setLoading(false);
+      setLoadingPedido(false);
     }
-  };
+  }, [orderBarcode, loadingPedido, toast]);
 
-  const handleToggleItem = (itemId: string, checked: boolean) => {
-    if (!currentOrder) return;
-    
-    // Atualiza o estado do pedido iterando sobre os itens
-    const updatedItems = currentOrder.items.map(item => {
-      if (item.id === itemId) {
-        return { 
-          ...item, 
-          checked, 
-          status: checked ? 'conferido' as StatusItem : 'pendente' as StatusItem 
-        };
-      }
-      return item;
-    });
+  const handleBipar = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    const sku = scanInput.trim();
+    if (!sku || !pedido || loadingScan) return;
 
-    setCurrentOrder({ ...currentOrder, items: updatedItems });
+    setScanInput("");
+    setLoadingScan(true);
+    setScanFeedback(null);
+    setLastScannedSku(sku);
 
-    // Se o item alterado for o que está selecionado/ativo, atualiza ele visualmente no painel esquerdo
-    if (activeItem?.id === itemId) {
-      setActiveItem({ 
-        ...activeItem, 
-        checked, 
-        status: checked ? 'conferido' : 'pendente' 
+    try {
+      const result = await logisticaService.bipar(pedido.id, sku);
+      playBeep(true);
+      setScanFeedback({ type: 'success', message: result.message });
+
+      // Atualizar estado local do pedido
+      setPedido(prev => {
+        if (!prev) return prev;
+        const novosItens = prev.itens.map(item =>
+          item.sku === sku ? { ...item, quantidadeBipada: result.quantidadeBipada } : item
+        );
+        return { ...prev, status: result.pedidoStatus, itens: novosItens };
       });
-    }
-  };
 
-  const handleReportProblem = () => {
-    if (!activeItem) return;
-    setIsProblemModalOpen(true);
-  };
-
-  const confirmProblem = () => {
-    if (!currentOrder || !activeItem) return;
-
-    if (!problemReason.trim()) {
-      toast({ variant: "destructive", title: "Atenção", description: "Descreva o motivo do problema." });
-      return;
-    }
-
-    const updatedItems = currentOrder.items.map(item => {
-      if (item.id === activeItem.id) {
-        return { ...item, status: 'problema' as StatusItem, checked: false };
+      if (result.pedidoStatus === 'Conferido') {
+        toast({ title: "✅ Conferência Concluída!", description: "Todos os itens foram conferidos com sucesso." });
       }
-      return item;
-    });
+    } catch (error: unknown) {
+      playBeep(false);
+      let msg = "Erro na bipagem.";
+      if (axios.isAxiosError(error)) {
+        msg = error.response?.data?.message || msg;
+      }
+      setScanFeedback({ type: 'error', message: msg });
+    } finally {
+      setLoadingScan(false);
+    }
+  }, [scanInput, pedido, loadingScan, toast]);
 
-    setCurrentOrder({ ...currentOrder, items: updatedItems });
-    setActiveItem({ ...activeItem, status: 'problema', checked: false });
-    
-    setIsProblemModalOpen(false);
-    setProblemReason("");
-    
-    toast({ 
-      variant: "destructive", 
-      title: "Problema Reportado", 
-      description: `O item ${activeItem.sku} foi marcado com problema de separação.` 
-    });
-  };
+  const handleExpedir = useCallback(async () => {
+    if (!pedido || loadingExpedir) return;
 
-  const handleFinalize = () => {
-    if (!currentOrder) return;
-    setCurrentOrder({ ...currentOrder, status: 'Conferido' });
-    toast({ 
-      title: "Transferência Concluída", 
-      description: "Pedido finalizado e enviado para a próxima etapa." 
-    });
-    
-    // Simula limpar a tela após uns segundos
-    setTimeout(() => {
-      setCurrentOrder(null);
-      setActiveItem(null);
-    }, 3000);
-  };
+    setLoadingExpedir(true);
+    try {
+      const result = await logisticaService.expedir(pedido.id);
+      setPedido(prev => prev ? { ...prev, status: result.status } : prev);
+      toast({ title: "🚚 Pedido Expedido!", description: result.message });
+    } catch (error: unknown) {
+      let msg = "Erro ao expedir pedido.";
+      if (axios.isAxiosError(error)) {
+        msg = error.response?.data?.message || msg;
+      }
+      toast({ variant: "destructive", title: "Erro na expedição", description: msg });
+    } finally {
+      setLoadingExpedir(false);
+    }
+  }, [pedido, loadingExpedir, toast]);
 
-  // Verifica se a conferência está apta para finalizar (Todos os itens não problemáticos marcados)
-  // Se algum item está como problema, o pedido pode ser travado ou passar como parcial.
-  // Assumindo: só habilita se ALL os itens estiverem checked.
-  const allChecked = currentOrder?.items.every(i => i.checked);
-  const isOrderCompleted = currentOrder?.status === 'Conferido';
+  const totalItens = pedido?.itens.length ?? 0;
+  const totalBipados = pedido?.itens.filter(i => i.quantidadeBipada >= i.quantidade).length ?? 0;
+  const totalUnidades = pedido?.itens.reduce((s, i) => s + i.quantidade, 0) ?? 0;
+  const totalBipadasUnidades = pedido?.itens.reduce((s, i) => s + i.quantidadeBipada, 0) ?? 0;
+  const progresso = totalUnidades > 0 ? Math.round((totalBipadasUnidades / totalUnidades) * 100) : 0;
+  const isConferido = pedido?.status === 'Conferido';
+  const isDespachado = pedido?.status === 'Despachado';
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col p-4 rounded-xl">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Conferência WMS</h1>
-        <p className="text-muted-foreground">Insira o código do pedido para iniciar a conferência visual.</p>
+    <div className="flex flex-col h-full gap-4 p-4">
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ScanLine className="h-6 w-6 text-primary" />
+          Conferência de Pedidos
+        </h1>
+        <p className="text-muted-foreground text-sm">Bipagem e validação de itens para expedição</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        
-        {/* Painel Esquerdo: Busca de Pedido e Exibição do Item Ativo */}
-        <div className="lg:col-span-2 flex flex-col gap-6 h-full">
-          {!currentOrder ? (
-            <Card className="border-2 border-primary/20 shadow-md">
-              <CardContent className="p-6">
-                <form onSubmit={handleScanOrder} className="flex gap-4">
-                  <div className="relative flex-1">
-                    <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
-                    <Input 
-                      autoFocus
-                      placeholder="Bipe ou digite o código do pedido/venda..." 
-                      className="pl-14 h-16 text-xl bg-muted/50 border-2"
-                      value={orderBarcode}
-                      onChange={(e) => setOrderBarcode(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <Button type="submit" size="lg" className="h-16 px-8 text-lg" disabled={loading}>
-                    Buscar Pedido
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-2 border-primary/20 bg-muted/10">
-               <CardContent className="p-4 flex items-center justify-between">
-                 <div>
-                   <p className="text-sm text-muted-foreground">Pedido em Conferência</p>
-                   <h2 className="text-2xl font-bold">{currentOrder.id}</h2>
-                 </div>
-                 <Button variant="outline" onClick={() => setCurrentOrder(null)}>
-                   Trocar Pedido
-                 </Button>
-               </CardContent>
-            </Card>
-          )}
+      {/* Busca de Pedido */}
+      <Card>
+        <CardContent className="pt-4">
+          <form onSubmit={handleBuscarPedido} className="flex gap-2">
+            <Input
+              ref={orderInputRef}
+              autoFocus
+              placeholder="Código / ID do pedido (Enter para buscar)"
+              value={orderBarcode}
+              onChange={e => setOrderBarcode(e.target.value)}
+              disabled={loadingPedido}
+              className="font-mono"
+            />
+            <Button type="submit" disabled={loadingPedido || !orderBarcode.trim()}>
+              {loadingPedido ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-          {activeItem ? (
-            <Card className={`flex-1 overflow-hidden transition-colors duration-300 ${activeItem.status === 'problema' ? 'bg-rose-500/10 border-rose-500/30' : activeItem.status === 'conferido' ? 'bg-emerald-500/5 border-emerald-500/20' : ''}`}>
-              <CardContent className="p-8 flex flex-col items-center justify-center h-full text-center relative">
-                
-                {/* Status Badge */}
-                <div className="absolute top-4 right-4">
-                  {activeItem.status === 'conferido' && (
-                    <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-semibold border border-emerald-200">
-                      <CheckSquare className="h-4 w-4" /> Conferido
-                    </div>
-                  )}
-                  {activeItem.status === 'problema' && (
-                    <div className="inline-flex items-center gap-1.5 bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-sm font-semibold border border-rose-200">
-                      <AlertTriangle className="h-4 w-4" /> Com Problema
-                    </div>
-                  )}
-                </div>
-
-                <div className="w-56 h-56 rounded-xl overflow-hidden shadow-lg mb-6 border-4 border-white bg-muted">
-                  {activeItem.image ? (
-                    <img src={activeItem.image} alt={activeItem.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-full h-full p-12 text-muted-foreground/30" />
-                  )}
-                </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">{activeItem.name}</h2>
-                <div className="flex flex-wrap justify-center gap-3 text-lg text-muted-foreground mb-8 font-mono">
-                  <span className="bg-background px-4 py-1.5 rounded-md border shadow-sm">{activeItem.sku}</span>
-                  <span className="bg-background px-4 py-1.5 rounded-md border shadow-sm">Cor: {activeItem.color}</span>
-                  <span className="bg-background px-4 py-1.5 rounded-md border shadow-sm">Tam: {activeItem.size}</span>
-                </div>
-
-                <div className="flex gap-4 w-full max-w-md">
-                  <Button 
-                    variant={activeItem.status === 'problema' ? 'destructive' : 'outline'}
-                    className="flex-1 h-12"
-                    onClick={handleReportProblem}
-                    disabled={isOrderCompleted}
-                  >
-                    <AlertTriangle className="mr-2 h-4 w-4" /> Reportar Problema
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="flex-1 flex flex-col items-center justify-center border-dashed text-muted-foreground p-12 bg-muted/20">
-              <div className="h-24 w-24 rounded-full bg-muted flex items-center justify-center mb-6">
-                <Package className="h-12 w-12 opacity-50" />
-              </div>
-              <p className="text-xl">Selecione um item na lista ao lado para ver os detalhes...</p>
-            </Card>
-          )}
+      {/* Conteúdo principal */}
+      {!pedido && !loadingPedido && (
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <Package className="h-16 w-16 mx-auto mb-4 opacity-30" />
+            <p className="text-lg">Busque um pedido para iniciar a conferência</p>
+          </div>
         </div>
+      )}
 
-        {/* Painel Direito: Lista de Itens e Finalização */}
-        <div className="flex flex-col h-full overflow-hidden">
-          <Card className="flex-1 flex flex-col h-full border-primary/10">
-            {currentOrder ? (
-              <>
-                <div className="p-4 border-b bg-muted/30">
-                  <div className="flex justify-between items-center mb-1">
-                    <h4 className="font-semibold text-lg">Itens do Pedido ({currentOrder.items.length})</h4>
-                    <span className="text-sm font-bold text-emerald-600">
-                      {currentOrder.items.filter(i => i.checked).length}/{currentOrder.items.length} Marcados
-                    </span>
-                  </div>
-                  {isOrderCompleted && (
-                    <div className="mt-2 bg-emerald-500/15 text-emerald-700 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 border border-emerald-500/20">
-                      <CheckSquare className="h-4 w-4" />
-                      Pedido totalmente conferido!
+      {pedido && (
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          {/* Info do pedido */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div>
+              <p className="text-xs text-muted-foreground">Pedido</p>
+              <p className="font-mono font-bold">{pedido.id.slice(0, 8).toUpperCase()}</p>
+            </div>
+            {pedido.clienteNome && (
+              <div>
+                <p className="text-xs text-muted-foreground">Cliente</p>
+                <p className="font-semibold">{pedido.clienteNome}</p>
+              </div>
+            )}
+            <div className="ml-auto">
+              <Badge variant={
+                pedido.status === 'Conferido' ? 'default' :
+                pedido.status === 'Despachado' ? 'secondary' :
+                pedido.status === 'Cancelado' ? 'destructive' : 'outline'
+              }>
+                {pedido.status}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Progresso */}
+          <Card>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-semibold">Progresso geral</span>
+                <span className="font-mono font-bold">{totalBipadasUnidades}/{totalUnidades} unidades — {progresso}%</span>
+              </div>
+              <Progress value={progresso} className="h-3" />
+            </CardContent>
+          </Card>
+
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden lg:flex-row">
+            {/* Painel scanner */}
+            <div className="flex flex-col gap-3 lg:w-80">
+              {/* Input scanner */}
+              <Card>
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ScanLine className="h-4 w-4" /> Scanner / Bipagem
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleBipar} className="flex flex-col gap-2">
+                    <Input
+                      ref={scanInputRef}
+                      placeholder="Bipar SKU (Enter)"
+                      value={scanInput}
+                      onChange={e => setScanInput(e.target.value)}
+                      disabled={loadingScan || isConferido || isDespachado || pedido.status === 'Cancelado'}
+                      className="font-mono"
+                      autoComplete="off"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={loadingScan || !scanInput.trim() || isConferido || isDespachado || pedido.status === 'Cancelado'}
+                    >
+                      {loadingScan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ScanLine className="h-4 w-4 mr-2" />}
+                      Confirmar
+                    </Button>
+                  </form>
+
+                  {/* Feedback último scan */}
+                  {scanFeedback && (
+                    <div className={`mt-3 flex items-start gap-2 rounded-md p-3 text-sm font-medium ${
+                      scanFeedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}>
+                      {scanFeedback.type === 'success'
+                        ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                        : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                      <span>{scanFeedback.message}</span>
                     </div>
                   )}
-                </div>
-                
-                <div className="p-4 flex-1 overflow-auto space-y-3">
-                  {currentOrder.items.map(item => (
-                    <div 
-                      key={item.id} 
-                      className={`flex gap-3 items-center p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md ${
-                        activeItem?.id === item.id ? 'ring-2 ring-primary border-transparent' : ''
-                      } ${
-                        item.status === 'conferido' ? 'bg-emerald-500/10 border-emerald-500/20' : 
-                        item.status === 'problema' ? 'bg-rose-500/10 border-rose-500/20' : 'bg-background hover:border-primary/40'
+
+                  {lastScannedSku && (
+                    <p className="mt-2 text-xs text-muted-foreground font-mono">
+                      Último scan: <span className="font-bold">{lastScannedSku}</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Status e ações */}
+              {(isConferido || isDespachado) && (
+                <Card className="border-emerald-200 bg-emerald-50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-emerald-700 font-semibold mb-3">
+                      <CheckSquare className="h-5 w-5" />
+                      {isDespachado ? "Pedido Despachado" : "Conferência Concluída"}
+                    </div>
+                    {isConferido && !isDespachado && (
+                      <Button
+                        className="w-full"
+                        onClick={handleExpedir}
+                        disabled={loadingExpedir}
+                      >
+                        {loadingExpedir
+                          ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          : <ShipIcon className="h-4 w-4 mr-2" />}
+                        Expedir Pedido
+                      </Button>
+                    )}
+                    {isDespachado && (
+                      <Button variant="outline" className="w-full" onClick={() => { setPedido(null); setOrderBarcode(""); setScanFeedback(null); setTimeout(() => orderInputRef.current?.focus(), 100); }}>
+                        Conferir Próximo Pedido
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {pedido.status === 'Cancelado' && (
+                <Card className="border-rose-200 bg-rose-50">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 text-rose-700 font-semibold">
+                      <AlertCircle className="h-5 w-5" />
+                      Pedido Cancelado — bipagem bloqueada
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Lista de itens */}
+            <Card className="flex-1 overflow-hidden flex flex-col">
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span>Itens do Pedido</span>
+                  <span className="font-mono text-emerald-600">{totalBipados}/{totalItens} itens completos</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-auto flex-1 p-3 space-y-2">
+                {pedido.itens.length === 0 && (
+                  <p className="text-muted-foreground text-sm text-center py-8">Nenhum item neste pedido.</p>
+                )}
+                {pedido.itens.map((item: ItemConferencia) => {
+                  const itemCompleto = item.quantidadeBipada >= item.quantidade;
+                  const itemAtivo = lastScannedSku === item.sku;
+                  const progressoItem = item.quantidade > 0 ? Math.round((item.quantidadeBipada / item.quantidade) * 100) : 0;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                        itemAtivo && scanFeedback?.type === 'error' ? 'bg-rose-50 border-rose-300 ring-1 ring-rose-300' :
+                        itemAtivo && scanFeedback?.type === 'success' ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300' :
+                        itemCompleto ? 'bg-emerald-50 border-emerald-200' : 'bg-background border-border'
                       }`}
-                      onClick={() => setActiveItem(item)}
                     >
-                      <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-                         <Checkbox 
-                           checked={item.checked} 
-                           onCheckedChange={(checked) => handleToggleItem(item.id, checked as boolean)}
-                           disabled={item.status === 'problema' || isOrderCompleted}
-                           className="h-5 w-5"
-                         />
-                      </div>
-                      
-                      {item.image ? (
-                        <img src={item.image} alt="" className="w-10 h-10 rounded-md object-cover border" />
+                      {/* Imagem ou ícone */}
+                      {item.imagemUrl ? (
+                        <img src={item.imagemUrl} alt={item.nomeProduto} className="w-12 h-12 rounded-md object-cover border shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border">
-                          <ImageIcon className="h-4 w-4 text-muted-foreground/50" />
+                        <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center border shrink-0">
+                          <Package className="h-5 w-5 text-muted-foreground/50" />
                         </div>
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <p className={`font-semibold text-sm truncate ${item.status === 'conferido' ? 'text-emerald-700' : item.status === 'problema' ? 'text-rose-700' : ''}`}>
-                          {item.name}
+                        <p className={`font-semibold text-sm truncate ${itemCompleto ? 'text-emerald-700' : ''}`}>
+                          {item.nomeProduto}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.sku} • {item.size}</p>
+                        <p className="text-xs font-mono text-muted-foreground mt-0.5">{item.sku}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Progress value={progressoItem} className="h-1.5 flex-1" />
+                          <span className={`text-xs font-bold font-mono shrink-0 ${itemCompleto ? 'text-emerald-600' : 'text-foreground'}`}>
+                            {item.quantidadeBipada}/{item.quantidade}
+                          </span>
+                        </div>
                       </div>
+
+                      {itemCompleto && (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                <div className="p-4 border-t bg-muted/20 mt-auto">
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    disabled={!allChecked || isOrderCompleted}
-                    onClick={handleFinalize}
-                  >
-                    Finalizar Transferência <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            ) : (
-               <div className="flex-1 flex items-center justify-center text-muted-foreground p-6 text-center">
-                 A lista de itens aparecerá aqui após buscar um pedido.
-               </div>
-            )}
-          </Card>
-        </div>
-      </div>
-
-      {/* Modal de Reportar Problema */}
-      <Dialog open={isProblemModalOpen} onOpenChange={setIsProblemModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reportar Problema</DialogTitle>
-            <DialogDescription>
-              Descreva o motivo do problema com o item <strong>{activeItem?.sku}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="Ex: Produto manchado, rasgado, cor errada..."
-              value={problemReason}
-              onChange={(e) => setProblemReason(e.target.value)}
-              className="min-h-[100px]"
-            />
+                  );
+                })}
+              </CardContent>
+            </Card>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsProblemModalOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={confirmProblem}>Salvar Problema</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }
