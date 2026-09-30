@@ -16,6 +16,9 @@ describe('Logística / Conferência (e2e)', () => {
   let pedidosService: PedidosService;
 
   beforeAll(async () => {
+    if (process.env.NODE_ENV !== 'test') throw new Error('FAIL-FAST: NODE_ENV must be test');
+    if (!process.env.DB_NAME || !process.env.DB_NAME.endsWith('test')) throw new Error('FAIL-FAST: DB_NAME must end with test');
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();

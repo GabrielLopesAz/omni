@@ -32,11 +32,25 @@ export class IntegracoesController {
     @Res() res: any,
   ) {
     try {
+      if (!state) throw new Error('State ausente');
       await this.integracoesService.callback(provider, code, state, req.ip);
-      return res.redirect('/integracoes?status=success&provider=' + provider);
+      return res.redirect(`/integracoes?status=success&provider=${provider}`);
     } catch (error: any) {
-      // Retorna ao frontend com erro
-      return res.redirect('/integracoes?status=error&provider=' + provider + '&message=' + encodeURIComponent(error.message));
+      let publicError = 'INTERNAL_ERROR';
+      const msg = error.message || '';
+      
+      if (msg.includes('State')) {
+         publicError = msg.includes('expirado') ? 'STATE_EXPIRED' : 'INVALID_STATE';
+      } else if (msg.includes('provider divergente') || msg.includes('Provider divergente')) {
+         publicError = 'PROVIDER_MISMATCH';
+      } else if (msg.includes('autorização') || msg.includes('authorization') || msg.includes('code')) {
+         publicError = 'AUTHORIZATION_FAILED';
+      }
+      
+      // Log do erro real no servidor para debug
+      console.error(`[OAuth Callback Error] Provider: ${provider} - ${msg}`);
+
+      return res.redirect(`/integracoes?status=error&provider=${provider}&message=${publicError}`);
     }
   }
 

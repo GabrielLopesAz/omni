@@ -1,9 +1,12 @@
+import { IntegracoesService } from '../src/modules/integracoes/integracoes.service.js';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { JwtService } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
+
+import { clearDatabaseSafely } from './test-utils.js';
 
 describe('Integracoes Marketplace (e2e)', () => {
   let app: INestApplication;
@@ -15,6 +18,9 @@ describe('Integracoes Marketplace (e2e)', () => {
   let tokenConfEmpA: string;
 
   beforeAll(async () => {
+    if (process.env.NODE_ENV !== 'test') throw new Error('FAIL-FAST: NODE_ENV must be test');
+    if (!process.env.DB_NAME || !process.env.DB_NAME.endsWith('test')) throw new Error('FAIL-FAST: DB_NAME must end with test');
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -25,48 +31,14 @@ describe('Integracoes Marketplace (e2e)', () => {
     jwtService = app.get(JwtService);
     dataSource = app.get(DataSource);
 
-    // Run migrations dynamically for test env
-    await dataSource.query(`
-      CREATE TABLE IF NOT EXISTS \`oauth_states\` (
-        \`state\` varchar(128) NOT NULL,
-        \`provider\` varchar(50) NOT NULL,
-        \`id_empresa\` varchar(36) NOT NULL,
-        \`id_usuario\` varchar(36) NOT NULL,
-        \`expires_at\` timestamp NOT NULL,
-        \`used_at\` timestamp NULL DEFAULT NULL,
-        \`created_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (\`state\`),
-        KEY \`fk_oauth_states_empresa\` (\`id_empresa\`),
-        KEY \`fk_oauth_states_usuario\` (\`id_usuario\`)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Alter integrations table
-    try {
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`provider\` varchar(50) NOT NULL AFTER \`id_empresa\``);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`external_account_id\` varchar(100) NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`external_account_name\` varchar(255) NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`access_token_encrypted\` text NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`refresh_token_encrypted\` text NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`token_expires_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`scopes\` text NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`connected_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`disconnected_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`last_sync_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`last_success_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`last_error_at\` timestamp NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`last_error\` text NULL`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` ADD COLUMN IF NOT EXISTS \`updated_at\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` DROP COLUMN IF EXISTS \`credenciais\``);
-      await dataSource.query(`ALTER TABLE \`integracoes_marketplace\` DROP COLUMN IF EXISTS \`ultima_sincronizacao\``);
-    } catch(e) {}
-
-    // Clean up safely
-    try { await dataSource.query(`DELETE FROM auditoria_logs WHERE id_usuario IN ('usr-a', 'usr-b', 'usr-ca')`); } catch(e){}
-    try { await dataSource.query(`DELETE FROM integracoes_marketplace WHERE id_empresa IN ('emp-a', 'emp-b')`); } catch(e){}
-    try { await dataSource.query(`DELETE FROM oauth_states WHERE id_empresa IN ('emp-a', 'emp-b')`); } catch(e){}
-    try { await dataSource.query(`DELETE FROM usuarios WHERE id IN ('usr-a', 'usr-b', 'usr-ca')`); } catch(e){}
-    try { await dataSource.query(`DELETE FROM empresas WHERE id IN ('emp-a', 'emp-b')`); } catch(e){}
+    // Clean up safely with fail-fast
+    await clearDatabaseSafely(dataSource, [
+      'auditoria_logs',
+      'integracoes_marketplace',
+      'oauth_states',
+      'usuarios',
+      'empresas'
+    ]);
 
     // Create Tenants
     await dataSource.query(`INSERT INTO empresas (id, nome) VALUES ('emp-a', 'Emp A'), ('emp-b', 'Emp B')`);
@@ -110,6 +82,9 @@ describe('Integracoes Marketplace (e2e)', () => {
     let validState: string;
 
     beforeAll(async () => {
+    if (process.env.NODE_ENV !== 'test') throw new Error('FAIL-FAST: NODE_ENV must be test');
+    if (!process.env.DB_NAME || !process.env.DB_NAME.endsWith('test')) throw new Error('FAIL-FAST: DB_NAME must end with test');
+
       const res = await request(app.getHttpServer())
         .post('/api/v1/integracoes/FAKE_MARKETPLACE/connect')
         .set('Authorization', `Bearer ${tokenAdminEmpA}`);
@@ -178,10 +153,64 @@ describe('Integracoes Marketplace (e2e)', () => {
     });
   });
 
+  describe('Refresh & Internal Service Logic', () => {
+    let idIntegracao: string;
+    let integracoesService: IntegracoesService; // We'll grab it from app
+
+    beforeAll(async () => {
+      integracoesService = app.get(IntegracoesService);
+      const dbRes = await dataSource.query(`SELECT id FROM integracoes_marketplace WHERE id_empresa = 'emp-a' LIMIT 1`);
+      idIntegracao = dbRes[0].id;
+      // Force token to be expired
+      await dataSource.query(`UPDATE integracoes_marketplace SET token_expires_at = '2020-01-01 00:00:00' WHERE id = ?`, [idIntegracao]);
+    });
+
+    it('deve renovar token quando expirado chamando getValidCredentials', async () => {
+      // Pega credenciais
+      const creds = await integracoesService.getValidCredentials(idIntegracao, 'emp-a');
+      
+      expect(creds.accessToken).toBe('fake-access-token-refreshed');
+      expect(creds.refreshToken).toBe('fake-refresh-token-refreshed');
+      
+      // Verifica banco
+      const [integracao] = await dataSource.query(`SELECT * FROM integracoes_marketplace WHERE id = ?`, [idIntegracao]);
+      expect(integracao.access_token_encrypted).not.toBe('fake-access-token-refreshed'); // deve estar criptografado
+      expect(new Date(integracao.token_expires_at).getFullYear()).toBeGreaterThan(2020); // foi atualizado
+    });
+    
+    it('deve registrar auditoria de TOKEN_REFRESH', async () => {
+       const [audit] = await dataSource.query(`SELECT * FROM auditoria_logs WHERE acao = 'TOKEN_REFRESH' ORDER BY created_at DESC LIMIT 1`);
+       expect(audit).toBeDefined();
+       expect(audit.tabela_afetada).toBe('integracoes_marketplace');
+    });
+
+    it('deve lidar com concorrencia chamando getValidCredentials simultaneamente', async () => {
+      // Force expiration again
+      await dataSource.query(`UPDATE integracoes_marketplace SET token_expires_at = '2020-01-01 00:00:00' WHERE id = ?`, [idIntegracao]);
+      
+      const results = await Promise.allSettled([
+        integracoesService.getValidCredentials(idIntegracao, 'emp-a'),
+        integracoesService.getValidCredentials(idIntegracao, 'emp-a')
+      ]);
+      
+      // Both should succeed (one will refresh, the other will either wait on lock and get the refreshed token because isExpiring becomes false)
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1].status).toBe('fulfilled');
+      
+      const val1 = (results[0] as any).value;
+      const val2 = (results[1] as any).value;
+      
+      expect(val1.accessToken).toBe(val2.accessToken);
+    });
+  });
+
   describe('Disconnect', () => {
     let idIntegracao: string;
 
     beforeAll(async () => {
+    if (process.env.NODE_ENV !== 'test') throw new Error('FAIL-FAST: NODE_ENV must be test');
+    if (!process.env.DB_NAME || !process.env.DB_NAME.endsWith('test')) throw new Error('FAIL-FAST: DB_NAME must end with test');
+
       const dbRes = await dataSource.query(`SELECT id FROM integracoes_marketplace WHERE id_empresa = 'emp-a' LIMIT 1`);
       idIntegracao = dbRes[0].id;
     });
@@ -206,3 +235,6 @@ describe('Integracoes Marketplace (e2e)', () => {
     });
   });
 });
+
+
+
