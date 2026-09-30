@@ -1,4 +1,4 @@
-import { IntegracoesService } from '../src/modules/integracoes/integracoes.service.js';
+﻿import { IntegracoesService } from '../src/modules/integracoes/integracoes.service.js';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -106,7 +106,39 @@ describe('Integracoes Marketplace (e2e)', () => {
         .expect('Location', /error/);
     });
 
-    it('deve processar callback e salvar integracao', async () => {
+    
+      it('deve lidar com concorrencia chamando callbacks simultaneos', async () => {
+        // Gerar um state
+        const stateReq = await request(app.getHttpServer())
+          .post('/api/v1/integracoes/FAKE_MARKETPLACE/connect')
+          .set('Authorization', 'Bearer ' + tokenAdminEmpA)
+          .expect(201);
+        const stateUrl = new URL(stateReq.body.authorizationUrl);
+        const rawState = stateUrl.searchParams.get('state');
+
+        // 2 requests concorrentes
+        const results = await Promise.allSettled([
+           request(app.getHttpServer()).get('/api/v1/integracoes/FAKE_MARKETPLACE/callback?code=valid-fake-code&state=' + rawState),
+           request(app.getHttpServer()).get('/api/v1/integracoes/FAKE_MARKETPLACE/callback?code=valid-fake-code&state=' + rawState)
+        ]);
+
+        const r1 = results[0].value;
+        const r2 = results[1].value;
+
+        // Redirect statuses
+        expect([r1.status, r2.status]).toContain(302);
+        
+        const redirects = [r1.header.location, r2.header.location];
+        
+        // Exact 1 success and 1 error/replay
+        const successes = redirects.filter(l => l && l.includes('status=success'));
+        const errors = redirects.filter(l => l && l.includes('status=error') && l.includes('INVALID_STATE'));
+        
+        expect(successes.length).toBe(1);
+        expect(errors.length).toBe(1);
+      });
+
+      it('deve processar callback e salvar integracao', async () => {
       await request(app.getHttpServer())
         .get(`/api/v1/integracoes/FAKE_MARKETPLACE/callback?code=valid-fake-code&state=${validState}`)
         .expect(302)
@@ -235,6 +267,7 @@ describe('Integracoes Marketplace (e2e)', () => {
     });
   });
 });
+
 
 
 

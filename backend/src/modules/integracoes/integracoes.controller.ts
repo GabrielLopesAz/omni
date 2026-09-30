@@ -1,3 +1,4 @@
+﻿import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
 import { Controller, Post, Get, Param, Query, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
@@ -37,13 +38,13 @@ export class IntegracoesController {
       return res.redirect(`/integracoes?status=success&provider=${provider}`);
     } catch (error: any) {
       let publicError = 'INTERNAL_ERROR';
-      const msg = error.message || '';
+      const msg = sanitizeExternalError(error);
       
       if (msg.includes('State')) {
          publicError = msg.includes('expirado') ? 'STATE_EXPIRED' : 'INVALID_STATE';
       } else if (msg.includes('provider divergente') || msg.includes('Provider divergente')) {
          publicError = 'PROVIDER_MISMATCH';
-      } else if (msg.includes('autorização') || msg.includes('authorization') || msg.includes('code')) {
+      } else if (msg.includes('autorizaÃ§Ã£o') || msg.includes('authorization') || msg.includes('code')) {
          publicError = 'AUTHORIZATION_FAILED';
       }
       
@@ -78,3 +79,4 @@ export class IntegracoesController {
     return { message: 'Desconectado com sucesso' };
   }
 }
+

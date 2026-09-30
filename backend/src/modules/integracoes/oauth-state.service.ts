@@ -56,10 +56,17 @@ export class OAuthStateService {
       throw new BadRequestException('Provider divergente no state');
     }
 
-    // Marca como usado
-    stateObj.usedAt = new Date();
-    await this.oauthStateRepo.save(stateObj);
+    // Marca como usado atomicamente
+    const updateResult = await this.oauthStateRepo.query(
+      `UPDATE oauth_states SET used_at = ? WHERE state = ? AND used_at IS NULL`,
+      [new Date(), hashedState]
+    );
 
+    if (updateResult.affectedRows === 0) {
+      throw new BadRequestException('State ja utilizado (Replay attack)');
+    }
+
+    // stateObj already has the original data to return (idEmpresa, idUsuario, etc)
     return stateObj;
   }
 }

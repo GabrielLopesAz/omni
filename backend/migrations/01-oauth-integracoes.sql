@@ -37,6 +37,19 @@ ALTER TABLE `integracoes_marketplace`
   ADD COLUMN IF NOT EXISTS `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
 
 -- Add Unique Constraint for Multi-account
--- (Note: handled natively by TypeORM synchronization in DEV/PROD, but we add it manually here for safety if we run this script directly)
--- Ignore Duplicate Key errors in application layer if this script is re-run.
-ALTER TABLE `integracoes_marketplace` ADD UNIQUE INDEX `idx_unique_empresa_provider_account` (`id_empresa`, `provider`, `external_account_id`);
+-- Using dynamic SQL (PREPARE) to achieve idempotency in raw SQL
+SET @dbname = DATABASE();
+SET @index_exists = (
+    SELECT COUNT(1) 
+    FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_SCHEMA = @dbname 
+      AND TABLE_NAME = 'integracoes_marketplace' 
+      AND INDEX_NAME = 'idx_unique_empresa_provider_account'
+);
+SET @s = IF(@index_exists > 0, 
+    'SELECT "Index already exists" AS message', 
+    'ALTER TABLE `integracoes_marketplace` ADD UNIQUE INDEX `idx_unique_empresa_provider_account` (`id_empresa`, `provider`, `external_account_id`)'
+);
+PREPARE stmt FROM @s;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

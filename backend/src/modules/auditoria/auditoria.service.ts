@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditoriaLog } from './entities/auditoria-log.entity.js';
@@ -12,7 +12,7 @@ export class AuditoriaService {
 
   async logAction(
     acao: string,
-    idUsuario: string,
+    idUsuario: string | null,
     ipAddress?: string,
     tabelaAfetada?: string,
     dadosAntigos?: any,
@@ -31,3 +31,4 @@ export class AuditoriaService {
     return repo.save(log);
   }
 }
+

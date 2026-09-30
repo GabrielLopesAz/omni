@@ -35,13 +35,7 @@ export default async function setup() {
     try {
       const statements = sql.split(';').filter(s => s.trim().length > 0);
       for (const stmt of statements) {
-        try {
-          await connection.query(stmt);
-        } catch(e: any) {
-          if (e.code !== 'ER_DUP_KEYNAME' && e.code !== 'ER_DUP_FIELDNAME') {
-            throw e;
-          }
-        }
+         await connection.query(stmt);
       }
       console.log('✅ global-setup: Migrations aplicadas no banco de teste');
     } catch (e) {

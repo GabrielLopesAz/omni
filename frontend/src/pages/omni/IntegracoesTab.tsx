@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,10 +34,6 @@ const PROVIDERS = [
   { id: 'SHOPEE', name: 'Shopee', active: false },
   { id: 'MERCADO_LIVRE', name: 'Mercado Livre', active: false },
   { id: 'BLING', name: 'Bling ERP', active: false },
-  { id: 'FAKE_MARKETPLACE', name: 'Fake Marketplace (Dev/Test)' },
-  { id: 'SHOPEE', name: 'Shopee' },
-  { id: 'MERCADO_LIVRE', name: 'Mercado Livre' },
-  { id: 'BLING', name: 'Bling ERP' },
 ];
 
 export function IntegracoesTab() {
@@ -182,7 +178,7 @@ export function IntegracoesTab() {
                 ) : (
                   <Plus className="mr-2 h-4 w-4" />
                 )}
-                Nova ConexÃ£o Segura
+                {p.active ? 'Nova Conex�o Segura' : 'Em breve'}
               </Button>
             </CardFooter>
           </Card>

@@ -1,3 +1,4 @@
+﻿import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
 import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
@@ -126,7 +127,7 @@ export class IntegracoesService {
           await adapter.revokeAuthorization({ accessToken, refreshToken });
         }
       } catch (e: any) {
-        revokeError = e.message || 'Falha desconhecida ao revogar no provider';
+        revokeError = sanitizeExternalError(e);
       }
     }
 
@@ -159,9 +160,9 @@ export class IntegracoesService {
         lock: { mode: 'pessimistic_write' },
       });
 
-      if (!integracao) throw new NotFoundException('Integração não encontrada');
+      if (!integracao) throw new NotFoundException('IntegraÃ§Ã£o nÃ£o encontrada');
       if (integracao.status === 'DESCONECTADO' || !integracao.accessTokenEncrypted) {
-        throw new BadRequestException('Integração desconectada ou sem credenciais');
+        throw new BadRequestException('IntegraÃ§Ã£o desconectada ou sem credenciais');
       }
 
       const now = new Date();
@@ -186,7 +187,7 @@ export class IntegracoesService {
         integracao.status = 'ERRO';
         integracao.lastError = 'Token expirado e sem refresh_token disponivel';
         await manager.save(IntegracaoMarketplace, integracao);
-        throw new BadRequestException('Integração expirou permanentemente');
+        throw new BadRequestException('IntegraÃ§Ã£o expirou permanentemente');
       }
 
       const adapter = this.adapterRegistry.getAdapter(integracao.provider);
@@ -198,7 +199,7 @@ export class IntegracoesService {
         });
       } catch (e: any) {
         integracao.status = 'ERRO';
-        integracao.lastError = 'Falha ao renovar token: ' + (e.message || 'Erro desconhecido');
+        integracao.lastError = 'Falha ao renovar token: ' + sanitizeExternalError(e);
         await manager.save(IntegracaoMarketplace, integracao);
         throw new InternalServerErrorException('Falha no refresh token no marketplace');
       }
@@ -217,8 +218,8 @@ export class IntegracoesService {
 
       await this.auditoriaService.logAction(
         'TOKEN_REFRESH',
-        null as any, // ID_USUARIO
-        '127.0.0.1', 
+        null,
+        null, 
         'integracoes_marketplace',
         null,
         { provider: integracao.provider, id_integracao: integracao.id },
@@ -256,3 +257,5 @@ export class IntegracoesService {
     return 'OK';
   }
 }
+
+
