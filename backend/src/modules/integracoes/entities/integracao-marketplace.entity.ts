@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity.js';
 
 @Entity('integracoes_marketplace')
@@ -62,6 +62,13 @@ export class IntegracaoMarketplace {
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 
+  @Column({ type: 'varchar', length: 100, name: 'sync_lock_owner', nullable: true })
+  syncLockOwner: string | null;
+
+  @Column({ type: 'timestamp', name: 'sync_lock_until', nullable: true })
+  syncLockUntil: Date | null;
+
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
 }
+

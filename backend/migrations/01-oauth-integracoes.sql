@@ -15,11 +15,6 @@ CREATE TABLE IF NOT EXISTS `oauth_states` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Alter integracoes_marketplace table to support OAuth
--- Instead of blindly adding, we first rename the old credenciais column to keep data if it exists.
--- But MySQL doesn't have RENAME COLUMN IF EXISTS. So we'll keep the columns if they exist.
-
--- Since MariaDB/MySQL ALTER TABLE ... ADD COLUMN IF NOT EXISTS is supported in MariaDB 10.0+ 
--- we will use it safely.
 ALTER TABLE `integracoes_marketplace`
   ADD COLUMN IF NOT EXISTS `provider` varchar(50) NOT NULL DEFAULT 'LEGACY' AFTER `id_empresa`,
   ADD COLUMN IF NOT EXISTS `external_account_id` varchar(100) NULL AFTER `nome`,
@@ -34,10 +29,11 @@ ALTER TABLE `integracoes_marketplace`
   ADD COLUMN IF NOT EXISTS `last_success_at` timestamp NULL AFTER `last_sync_at`,
   ADD COLUMN IF NOT EXISTS `last_error_at` timestamp NULL AFTER `last_success_at`,
   ADD COLUMN IF NOT EXISTS `last_error` text NULL AFTER `last_error_at`,
-  ADD COLUMN IF NOT EXISTS `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`;
+  ADD COLUMN IF NOT EXISTS `sync_lock_owner` varchar(100) NULL AFTER `last_error`,
+  ADD COLUMN IF NOT EXISTS `sync_lock_until` timestamp NULL AFTER `sync_lock_owner`,
+  ADD COLUMN IF NOT EXISTS `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `sync_lock_until`;
 
 -- Add Unique Constraint for Multi-account
--- Using dynamic SQL (PREPARE) to achieve idempotency in raw SQL
 SET @dbname = DATABASE();
 SET @index_exists = (
     SELECT COUNT(1) 

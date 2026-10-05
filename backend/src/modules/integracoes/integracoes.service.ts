@@ -183,6 +183,7 @@ export class IntegracoesService {
         return {
           accessToken: currentAccessToken,
           refreshToken: currentRefreshToken,
+          externalAccountId: integracao.externalAccountId || undefined,
           externalAccountId: integracao.externalAccountId || undefined
         };
       }
@@ -201,12 +202,13 @@ export class IntegracoesService {
         newCreds = await adapter.refreshAccessToken({
           accessToken: currentAccessToken,
           refreshToken: currentRefreshToken,
+          externalAccountId: integracao.externalAccountId || undefined,
         });
       } catch (e: any) {
         integracao.status = 'ERRO';
         integracao.lastError = 'Falha ao renovar token: ' + sanitizeExternalError(e);
         await manager.save(IntegracaoMarketplace, integracao);
-        throw new InternalServerErrorException('Falha no refresh token no marketplace');
+        console.error(e); throw new InternalServerErrorException('Falha no refresh token no marketplace');
       }
 
       // Salva novas credenciais
@@ -262,6 +264,8 @@ export class IntegracoesService {
     return 'OK';
   }
 }
+
+
 
 
 

@@ -5,6 +5,7 @@ import { IntegracaoMarketplace } from '../entities/integracao-marketplace.entity
 import { IntegracoesService } from '../integracoes.service.js';
 import { MarketplaceAdapterRegistry } from '../adapters/adapter.registry.js';
 import { PedidosService } from '../../pedidos/pedidos.service.js';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class MarketplaceSyncService {
@@ -21,14 +22,26 @@ export class MarketplaceSyncService {
 
   async syncIntegration(idIntegracao: string, idEmpresa: string): Promise<void> {
     const lockKey = `${idEmpresa}:${idIntegracao}`;
+    
+    // 1. Otimização local (In-Memory)
     if (this.runningSyncs.has(lockKey)) {
-      this.logger.warn(`Sync já está rodando para integração ${idIntegracao}. Pulando.`);
+      this.logger.warn(`Sync local já está rodando para integração ${idIntegracao}. Pulando.`);
       return;
     }
     this.runningSyncs.add(lockKey);
 
+    const ownerId = crypto.randomUUID();
+
     try {
-      // 1. Obter credenciais válidas (faz refresh se necessário via IntegracoesService)
+      // 2. Lock Distribuído no Banco de Dados
+      // Tenta adquirir o lease. Expirará em 15 minutos se o processo morrer.
+      const lockAcquired = await this.acquireLock(idIntegracao, idEmpresa, ownerId, 15);
+      if (!lockAcquired) {
+        this.logger.warn(`Sync bloqueado no banco (lock ativo) para integração ${idIntegracao}. Pulando.`);
+        return;
+      }
+
+      // 3. Obter credenciais válidas (faz refresh se necessário via IntegracoesService)
       let credentials;
       try {
         credentials = await this.integracoesService.getValidCredentials(idIntegracao, idEmpresa);
@@ -38,7 +51,7 @@ export class MarketplaceSyncService {
         return;
       }
 
-      // 2. Carregar integração para ver checkpoint de data
+      // 4. Carregar integração para ver checkpoint de data
       const integracao = await this.integracaoRepo.findOne({ where: { id: idIntegracao, idEmpresa } });
       if (!integracao) return;
 
@@ -48,8 +61,7 @@ export class MarketplaceSyncService {
         return;
       }
 
-      // Overlap window: Pega pedidos dos últimos X minutos para garantir que nada foi perdido.
-      // Se não tem lastSuccessAt, pega as últimas 24h.
+      // Overlap window: Pega pedidos dos últimos 15 minutos
       const overlapMinutes = 15;
       const now = new Date();
       let timeFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000); 
@@ -59,7 +71,7 @@ export class MarketplaceSyncService {
       }
       const timeTo = now;
 
-      // 3. Buscar pedidos do Marketplace
+      // 5. Buscar pedidos do Marketplace
       let orders;
       try {
         orders = await adapter.getOrders(credentials, timeFrom, timeTo);
@@ -69,7 +81,7 @@ export class MarketplaceSyncService {
         return;
       }
 
-      // 4. Importar cada pedido
+      // 6. Importar cada pedido
       let successCount = 0;
       let errorCount = 0;
 
@@ -92,19 +104,44 @@ export class MarketplaceSyncService {
           );
           successCount++;
         } catch (importErr: any) {
-          // Ignoramos o erro de um pedido especifico para nao parar a fila (ex: SKU nao encontrado ou unique constraint)
           this.logger.warn(`Falha ao importar pedido ${order.externalOrderId} da integracao ${idIntegracao}: ${importErr.message}`);
           errorCount++;
         }
       }
 
-      // 5. Atualizar sucesso
+      // 7. Atualizar sucesso
       await this.updateSyncStatus(idIntegracao, idEmpresa, now, null);
       this.logger.log(`Sync ${idIntegracao} finalizado: ${successCount} sucesso, ${errorCount} erros.`);
 
     } finally {
       this.runningSyncs.delete(lockKey);
+      await this.releaseLock(idIntegracao, idEmpresa, ownerId);
     }
+  }
+
+  private async acquireLock(id: string, idEmpresa: string, owner: string, timeoutMinutes: number): Promise<boolean> {
+    const lockUntil = new Date(Date.now() + timeoutMinutes * 60 * 1000);
+    // Tenta atualizar se nao tiver dono ou se o tempo do dono atual ja expirou
+    const updateResult = await this.integracaoRepo.manager.query(`
+      UPDATE integracoes_marketplace 
+      SET sync_lock_owner = ?, sync_lock_until = ? 
+      WHERE id = ? AND id_empresa = ? AND (
+        sync_lock_until IS NULL 
+        OR sync_lock_until < NOW()
+      )
+    `, [owner, lockUntil, id, idEmpresa]);
+
+    // O MySQL2 driver retorna updateResult com affectedRows em index 0 ou property, vamos verificar dependendo do driver
+    const affected = updateResult.affectedRows ?? updateResult[1];
+    return affected === 1;
+  }
+
+  private async releaseLock(id: string, idEmpresa: string, owner: string): Promise<void> {
+    await this.integracaoRepo.manager.query(`
+      UPDATE integracoes_marketplace 
+      SET sync_lock_owner = NULL, sync_lock_until = NULL 
+      WHERE id = ? AND id_empresa = ? AND sync_lock_owner = ?
+    `, [id, idEmpresa, owner]);
   }
 
   private async updateSyncStatus(id: string, idEmpresa: string, successTime: Date | null, errorMsg: string | null) {
