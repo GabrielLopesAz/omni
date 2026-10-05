@@ -46,8 +46,13 @@ export class IntegracoesService {
     return { authorizationUrl };
   }
 
-  async callback(provider: string, code: string, rawState: string, ip: string): Promise<void> {
+  async callback(provider: string, query: any, ip: string): Promise<void> {
     const adapter = this.adapterRegistry.getAdapter(provider);
+    
+    const callbackData = adapter.parseAuthorizationCallback ? adapter.parseAuthorizationCallback(query) : { code: query.code, state: query.state };
+    const code = callbackData.code;
+    const rawState = callbackData.state;
+
     
     // Validar e consumir state.
     const stateObj = await this.oauthStateService.validateAndConsumeState(rawState, provider);
@@ -58,7 +63,7 @@ export class IntegracoesService {
       idUsuario: stateObj.idUsuario,
       state: rawState,
       provider,
-    });
+    }, callbackData);
 
     await this.dataSource.transaction(async (manager) => {
       let integracao = await manager.findOne(IntegracaoMarketplace, {
@@ -257,5 +262,7 @@ export class IntegracoesService {
     return 'OK';
   }
 }
+
+
 
 

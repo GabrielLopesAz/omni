@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IntegracaoMarketplace } from '../entities/integracao-marketplace.entity.js';
+import { MarketplaceSyncService } from '../sync/marketplace-sync.service.js';
 
 @Injectable()
 export class MarketplaceSyncCron {
@@ -10,22 +11,24 @@ export class MarketplaceSyncCron {
 
   constructor(
     @InjectRepository(IntegracaoMarketplace)
-    private integracaoRepo: Repository<IntegracaoMarketplace>,
+    private readonly integracaoRepo: Repository<IntegracaoMarketplace>,
+    private readonly syncService: MarketplaceSyncService,
   ) {}
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_MINUTE) // Ou EVERY_5_MINUTES, EVERY_MINUTE no dev
   async handleCron() {
-    this.logger.log('Iniciando sincronizacao de Marketplaces (Polling)...');
+    this.logger.debug('Iniciando cron de sincronizacao de Marketplaces...');
     
-    // 1. Busca integracoes conectadas
+    // Busca integracoes conectadas ativas
     const integracoes = await this.integracaoRepo.find({ where: { status: 'CONECTADO' } });
     
     if (integracoes.length === 0) {
-      this.logger.log('Nenhuma integracao conectada encontrada.');
       return;
     }
 
-    this.logger.log(`Encontradas ${integracoes.length} integracoes conectadas.`);
-    this.logger.log('Sincronizacao de pedidos real sera implementada no pacote P4.2.');
+    // Dispara em paralelo, mas o Set interno do MarketplaceSyncService previne sobreposicoes na mesma integracao
+    await Promise.allSettled(
+      integracoes.map(i => this.syncService.syncIntegration(i.id, i.idEmpresa))
+    );
   }
 }

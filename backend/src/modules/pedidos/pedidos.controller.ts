@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+﻿import { Controller, Get, Param, Query, UseGuards, Req, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PedidosService } from './pedidos.service.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
@@ -11,13 +11,17 @@ export class PedidosController {
 
   @Get()
   @Roles('ADMIN', 'GERENTE', 'CONFERENTE')
-  async listar(@Query('status') status?: string) {
-    return this.pedidosService.listar(status);
+  async listar(@Req() req: any, @Query('status') status?: string) {
+    const idEmpresa = req.user?.empresaId;
+    if (!idEmpresa) throw new UnauthorizedException('Empresa não identificada no contexto');
+    return this.pedidosService.listar(idEmpresa, status);
   }
 
   @Get(':id')
   @Roles('ADMIN', 'GERENTE', 'CONFERENTE')
-  async buscarPorId(@Param('id') id: string) {
-    return this.pedidosService.buscarPorId(id);
+  async buscarPorId(@Req() req: any, @Param('id') id: string) {
+    const idEmpresa = req.user?.empresaId;
+    if (!idEmpresa) throw new UnauthorizedException('Empresa não identificada no contexto');
+    return this.pedidosService.buscarPorId(id, idEmpresa);
   }
 }

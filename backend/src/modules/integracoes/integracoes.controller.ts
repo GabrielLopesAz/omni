@@ -1,13 +1,17 @@
-﻿import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
+import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
 import { Controller, Post, Get, Param, Query, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { IntegracoesService } from './integracoes.service.js';
+import { MarketplaceSyncService } from './sync/marketplace-sync.service.js';
 
 @Controller('api/v1/integracoes')
 export class IntegracoesController {
-  constructor(private readonly integracoesService: IntegracoesService) {}
+  constructor(
+    private readonly integracoesService: IntegracoesService,
+    private readonly syncService: MarketplaceSyncService
+  ) {}
 
   @Post(':provider/connect')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -27,14 +31,12 @@ export class IntegracoesController {
   @Get(':provider/callback')
   async callback(
     @Param('provider') provider: string,
-    @Query('code') code: string,
-    @Query('state') state: string,
+    @Query() query: any,
     @Req() req: any,
     @Res() res: any,
   ) {
     try {
-      if (!state) throw new Error('State ausente');
-      await this.integracoesService.callback(provider, code, state, req.ip);
+      await this.integracoesService.callback(provider, query, req.ip);
       return res.redirect(`/integracoes?status=success&provider=${provider}`);
     } catch (error: any) {
       let publicError = 'INTERNAL_ERROR';
@@ -44,11 +46,10 @@ export class IntegracoesController {
          publicError = msg.includes('expirado') ? 'STATE_EXPIRED' : 'INVALID_STATE';
       } else if (msg.includes('provider divergente') || msg.includes('Provider divergente')) {
          publicError = 'PROVIDER_MISMATCH';
-      } else if (msg.includes('autorizaÃ§Ã£o') || msg.includes('authorization') || msg.includes('code')) {
+      } else if (msg.includes('autorização') || msg.includes('authorization') || msg.includes('code')) {
          publicError = 'AUTHORIZATION_FAILED';
       }
       
-      // Log do erro real no servidor para debug
       console.error(`[OAuth Callback Error] Provider: ${provider} - ${msg}`);
 
       return res.redirect(`/integracoes?status=error&provider=${provider}&message=${publicError}`);
@@ -78,5 +79,18 @@ export class IntegracoesController {
     await this.integracoesService.disconnect(id, idEmpresa, idUsuario, req.ip);
     return { message: 'Desconectado com sucesso' };
   }
-}
 
+  @Post(':id/sync')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN', 'GERENTE')
+  async sync(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    const idEmpresa = req.user?.empresaId;
+    if (!idEmpresa) throw new UnauthorizedException();
+
+    this.syncService.syncIntegration(id, idEmpresa).catch(e => console.error(e));
+    return { message: 'Sincronizacao iniciada em background' };
+  }
+}

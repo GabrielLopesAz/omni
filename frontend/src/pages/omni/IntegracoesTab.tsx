@@ -7,7 +7,6 @@ import { api } from '@/services/api';
 import { Loader2, Plus, Unplug, RefreshCcw, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
-
 import axios from 'axios';
 
 export interface IntegracaoMarketplacePublic {
@@ -31,7 +30,7 @@ const isDev = import.meta.env.DEV;
 
 const PROVIDERS = [
   ...(isDev ? [{ id: 'FAKE_MARKETPLACE', name: 'Fake Marketplace (Dev/Test)', active: true }] : []),
-  { id: 'SHOPEE', name: 'Shopee', active: false },
+  { id: 'SHOPEE', name: 'Shopee', active: true },
   { id: 'MERCADO_LIVRE', name: 'Mercado Livre', active: false },
   { id: 'BLING', name: 'Bling ERP', active: false },
 ];
@@ -41,7 +40,6 @@ export function IntegracoesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Show toast if redirected from callback
   useEffect(() => {
     const status = searchParams.get('status');
     const msg = searchParams.get('message');
@@ -49,15 +47,14 @@ export function IntegracoesTab() {
 
     if (status === 'success') {
       toast({
-        title: 'ConexÃ£o realizada',
-        description: `IntegraÃ§Ã£o com ${provider} concluÃ­da com sucesso.`,
+        title: 'Conexão realizada',
+        description: `Integração com ${provider} concluída com sucesso.`,
       });
-      // Limpa os params para n exibir novamente no reload
       setSearchParams(new URLSearchParams());
     } else if (status === 'error') {
       toast({
         variant: 'destructive',
-        title: 'Falha na conexÃ£o',
+        title: 'Falha na conexão',
         description: `Erro ao conectar ${provider}: ${msg || 'Desconhecido'}`,
       });
       setSearchParams(new URLSearchParams());
@@ -78,14 +75,13 @@ export function IntegracoesTab() {
       return res.data.authorizationUrl;
     },
     onSuccess: (url) => {
-      // Redireciona o usuario para o marketplace
       window.location.href = url;
     },
     onError: (error: unknown) => {
       toast({
         variant: 'destructive',
         title: 'Erro de infraestrutura',
-        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao solicitar URL de autorizaÃ§Ã£o.'
+        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao solicitar URL de autorização.'
       });
     }
   });
@@ -102,7 +98,7 @@ export function IntegracoesTab() {
       toast({
         variant: 'destructive',
         title: 'Erro ao desconectar',
-        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao processar operaÃ§Ã£o.'
+        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao processar operação.'
       });
     }
   });
@@ -111,7 +107,7 @@ export function IntegracoesTab() {
     if (status === 'DESCONECTADO') return <Badge variant="secondary"><Unplug className="mr-1 h-3 w-3"/> Desconectado</Badge>;
     if (status === 'PENDENTE') return <Badge variant="outline" className="text-yellow-600"><RefreshCcw className="mr-1 h-3 w-3 animate-spin"/> Pendente</Badge>;
     if (health === 'OK') return <Badge className="bg-emerald-500 hover:bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3"/> Conectado</Badge>;
-    if (health === 'ATENCAO') return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3"/> Expirado/Requer AtenÃ§Ã£o</Badge>;
+    if (health === 'ATENCAO') return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3"/> Expirado/Requer Atenção</Badge>;
     return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3"/> Erro</Badge>;
   };
 
@@ -122,7 +118,6 @@ export function IntegracoesTab() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {PROVIDERS.map(p => {
-        // Encontra integraÃ§Ãµes ativas para este provider
         const connectedInstances = (integracoes as IntegracaoMarketplacePublic[])?.filter((i) => i.provider === p.id) || [];
         
         return (
@@ -139,8 +134,8 @@ export function IntegracoesTab() {
                   {connectedInstances.map((inst) => (
                     <div key={inst.id} className="border rounded-md p-3 text-sm flex flex-col space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium truncate pr-2" title={inst.externalAccountName || 'Conta PadrÃ£o'}>
-                          {inst.externalAccountName || 'Conta PadrÃ£o'}
+                        <span className="font-medium truncate pr-2" title={inst.externalAccountName || 'Conta Padrão'}>
+                          {inst.externalAccountName || 'Conta Padrão'}
                         </span>
                         {getStatusBadge(inst.status, inst.health)}
                       </div>
@@ -178,7 +173,7 @@ export function IntegracoesTab() {
                 ) : (
                   <Plus className="mr-2 h-4 w-4" />
                 )}
-                {p.active ? 'Nova Conex�o Segura' : 'Em breve'}
+                {p.active ? 'Nova Conexão Segura' : 'Em breve'}
               </Button>
             </CardFooter>
           </Card>
@@ -187,6 +182,3 @@ export function IntegracoesTab() {
     </div>
   );
 }
-
-
-
