@@ -1,4 +1,4 @@
-import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
+﻿import { sanitizeExternalError } from '../../shared/utils/error-sanitizer.util.js';
 import { Controller, Post, Get, Param, Query, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
@@ -46,7 +46,7 @@ export class IntegracoesController {
          publicError = msg.includes('expirado') ? 'STATE_EXPIRED' : 'INVALID_STATE';
       } else if (msg.includes('provider divergente') || msg.includes('Provider divergente')) {
          publicError = 'PROVIDER_MISMATCH';
-      } else if (msg.includes('autorização') || msg.includes('authorization') || msg.includes('code')) {
+      } else if (msg.includes('autorizaÃ§Ã£o') || msg.includes('authorization') || msg.includes('code')) {
          publicError = 'AUTHORIZATION_FAILED';
       }
       
@@ -90,7 +90,9 @@ export class IntegracoesController {
     const idEmpresa = req.user?.empresaId;
     if (!idEmpresa) throw new UnauthorizedException();
 
-    this.syncService.syncIntegration(id, idEmpresa).catch(e => console.error(e));
-    return { message: 'Sincronizacao iniciada em background' };
+    const result = await this.syncService.syncIntegration(id, idEmpresa);
+    return result;
   }
 }
+
+

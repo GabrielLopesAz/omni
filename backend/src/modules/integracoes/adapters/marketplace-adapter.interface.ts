@@ -1,4 +1,4 @@
-export interface AuthorizationContext {
+﻿export interface AuthorizationContext {
   idEmpresa: string;
   idUsuario: string;
   state: string;
@@ -20,7 +20,10 @@ export interface MarketplaceAuthorizationCallback {
   externalAccountIdHint?: string;
 }
 
+export type MarketplaceOrderAction = 'IMPORT' | 'CANCEL' | 'UPDATE_STATUS' | 'IGNORE' | 'CONFLICT';
+
 export interface NormalizedMarketplaceOrder {
+  action: MarketplaceOrderAction;
   externalOrderId: string;
   externalStatus: string;
   customerName: string | null;
@@ -57,3 +60,4 @@ export interface IMarketplaceAdapter {
   // Data Sync
   getOrders?(credentials: MarketplaceCredentials, timeFrom: Date, timeTo: Date): Promise<NormalizedMarketplaceOrder[]>;
 }
+

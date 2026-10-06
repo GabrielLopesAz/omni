@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,7 +20,7 @@ export class MarketplaceSyncCron {
     this.logger.debug('Iniciando cron de sincronizacao de Marketplaces...');
     
     // Busca integracoes conectadas ativas
-    const integracoes = await this.integracaoRepo.find({ where: { status: 'CONECTADO' } });
+    const integracoes = await this.integracaoRepo.find({ where: { status: 'CONECTADO', provider: 'SHOPEE' } });
     
     if (integracoes.length === 0) {
       return;
@@ -32,3 +32,4 @@ export class MarketplaceSyncCron {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity.js';
@@ -9,6 +9,7 @@ export interface MarketplaceOrderImportDto {
   cliente_nome: string;
   valor_total: number;
   taxas_marketplace?: number;
+  status?: string;
 }
 
 export interface MarketplaceOrderItemDto {
@@ -28,7 +29,6 @@ export class PedidosService {
 
   async listar(idEmpresa: string, status?: string): Promise<Pedido[]> {
     const query = this.pedidoRepo.createQueryBuilder('pedido')
-      
       .leftJoinAndSelect('pedido.integracao', 'integracao')
       .where('pedido.idEmpresa = :idEmpresa', { idEmpresa });
 
@@ -46,7 +46,7 @@ export class PedidosService {
     });
 
     if (!pedido) {
-      throw new NotFoundException('Pedido nÃ£o encontrado');
+      throw new NotFoundException('Pedido não encontrado');
     }
 
     const itens = await this.itemPedidoRepo.find({
@@ -72,13 +72,13 @@ export class PedidosService {
 
     for (const item of itens) {
       if (!item.sku || item.sku.trim() === '') {
-        throw new Error('SKU invÃ¡lido ou vazio');
+        throw new Error('SKU inválido ou vazio');
       }
       if (!Number.isInteger(item.quantidade) || item.quantidade <= 0) {
-        throw new Error(`Quantidade invÃ¡lida para o SKU ${item.sku}`);
+        throw new Error(`Quantidade inválida para o SKU ${item.sku}`);
       }
       if (typeof item.precoUnitario !== 'number' || item.precoUnitario < 0) {
-        throw new Error(`PreÃ§o unitÃ¡rio invÃ¡lido para o SKU ${item.sku}`);
+        throw new Error(`Preço unitário inválido para o SKU ${item.sku}`);
       }
       mapItens.push({ ...item });
     }
@@ -93,9 +93,15 @@ export class PedidosService {
         });
 
         if (pedidoExistente) {
+          // If it already exists, just update status if it changed
+          if (dadosPedido.status && pedidoExistente.status === 'Pendente') {
+            pedidoExistente.status = dadosPedido.status;
+            await manager.save(Pedido, pedidoExistente);
+          }
           return;
         }
 
+        // Validate all SKUs exist first (to satisfy rollback multi-item requirement)
         for (const item of mapItens) {
           const [produto] = await manager.query(
             `SELECT id FROM produtos WHERE sku = ? AND id_empresa = ? LIMIT 1`,
@@ -103,23 +109,27 @@ export class PedidosService {
           );
 
           if (!produto) {
-            throw new Error(`Produto nÃ£o encontrado para o SKU ${item.sku}`);
+            throw new Error(`Produto não encontrado para o SKU ${item.sku}`);
           }
-          
           item.idProduto = produto.id; 
+        }
 
+        // Reserve stock
+        for (const item of mapItens) {
           const result = await manager.query(
             `UPDATE estoque 
              SET quantidade_disponivel = quantidade_disponivel - ?,
                  quantidade_reservada = quantidade_reservada + ?
              WHERE id_produto = ? AND quantidade_disponivel >= ?`,
-            [item.quantidade, item.quantidade, produto.id, item.quantidade]
+            [item.quantidade, item.quantidade, item.idProduto, item.quantidade]
           );
 
           if (result.affectedRows === 0) {
             throw new Error(`Estoque insuficiente para o produto ${item.sku}`);
           }
         }
+
+        const statusInterno = dadosPedido.status || 'Pendente';
 
         const novoPedido = manager.create(Pedido, {
           idIntegracao: integracaoId,
@@ -128,7 +138,7 @@ export class PedidosService {
           clienteNome: dadosPedido.cliente_nome,
           valorTotal: dadosPedido.valor_total,
           taxasMarketplace: dadosPedido.taxas_marketplace,
-          status: 'Pendente'
+          status: statusInterno
         });
 
         const pedidoSalvo = await manager.save(Pedido, novoPedido);
@@ -149,22 +159,96 @@ export class PedidosService {
       if (err.code === 'ER_DUP_ENTRY' && err.message.includes('uk_pedido_integracao')) {
         return;
       }
-      console.error('ERRO EM IMPORTAR:', err);
       throw err;
     }
   }
 
-  async cancelarPedido(idPedido: string, idEmpresa: string): Promise<void> {
-console.log('CANCELAR:', idPedido, idEmpresa);
+  async cancelarPedidoMarketplace(idIntegracao: string, idEmpresa: string, idPedidoMarketplace: string): Promise<void> {
     await this.pedidoRepo.manager.transaction(async (manager) => {
-      const pedido = await manager.findOne(Pedido, { where: { id: idPedido, idEmpresa } });
+      const pedido = await manager.findOne(Pedido, { 
+        where: { idIntegracao, idPedidoMarketplace, idEmpresa },
+        lock: { mode: 'pessimistic_write' }
+      });
       
       if (!pedido) {
-        throw new NotFoundException('Pedido nÃ£o encontrado');
+        return; // Idempotent or doesn't exist yet
       }
 
       if (pedido.status === 'Cancelado') {
         return;
+      }
+
+      if (pedido.status === 'Despachado') {
+        throw new Error('CONFLICT: Pedido já foi despachado. Não é possível cancelar e estornar estoque.');
+      }
+
+      const itens = await manager.find(ItemPedido, { where: { idPedido: pedido.id } });
+
+      for (const item of itens) {
+        const [estoque] = await manager.query(
+          `SELECT quantidade_reservada FROM estoque WHERE id_produto = ? LIMIT 1`,
+          [item.idProduto]
+        );
+
+        if (!estoque || estoque.quantidade_reservada < item.quantidade) {
+          // Apenas ignore e faça estorno parcial ou log warning, mas para simplificar lançamos erro de integridade
+          throw new Error(`Inconsistência: Reserva atual é menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
+        }
+
+        const result = await manager.query(
+          `UPDATE estoque
+           SET quantidade_disponivel = quantidade_disponivel + ?,
+               quantidade_reservada = quantidade_reservada - ?
+           WHERE id_produto = ? AND quantidade_reservada >= ?`,
+          [item.quantidade, item.quantidade, item.idProduto, item.quantidade]
+        );
+
+        if (result.affectedRows === 0) {
+          throw new Error('Falha ao restaurar estoque durante cancelamento');
+        }
+      }
+
+      pedido.status = 'Cancelado';
+      await manager.save(Pedido, pedido);
+    });
+  }
+
+  async atualizarStatusMarketplace(idIntegracao: string, idEmpresa: string, idPedidoMarketplace: string, externalStatus: string, action: string): Promise<void> {
+    await this.pedidoRepo.manager.transaction(async (manager) => {
+      const pedido = await manager.findOne(Pedido, { 
+        where: { idIntegracao, idPedidoMarketplace, idEmpresa },
+        lock: { mode: 'pessimistic_write' }
+      });
+
+      if (!pedido) return; // ignore updates for orders that don't exist
+
+      // Only allow safe internal state transitions based on external status
+      if (pedido.status === 'Cancelado' || pedido.status === 'Despachado' || pedido.status === 'Entregue') {
+         return; // internal final states take precedence over external non-cancel updates
+      }
+
+      if (action === 'UPDATE_STATUS') {
+        if (externalStatus === 'SHIPPED') pedido.status = 'Despachado';
+        else if (externalStatus === 'COMPLETED') pedido.status = 'Entregue';
+        await manager.save(Pedido, pedido);
+      }
+    });
+  }
+
+  async cancelarPedido(idPedido: string, idEmpresa: string): Promise<void> {
+    await this.pedidoRepo.manager.transaction(async (manager) => {
+      const pedido = await manager.findOne(Pedido, { where: { id: idPedido, idEmpresa }, lock: { mode: 'pessimistic_write' } });
+      
+      if (!pedido) {
+        throw new NotFoundException('Pedido não encontrado');
+      }
+
+      if (pedido.status === 'Cancelado') {
+        return;
+      }
+
+      if (pedido.status === 'Despachado') {
+        throw new Error('CONFLICT: Pedido já foi despachado. Não é possível cancelar e estornar estoque.');
       }
 
       const itens = await manager.find(ItemPedido, { where: { idPedido } });
@@ -176,7 +260,7 @@ console.log('CANCELAR:', idPedido, idEmpresa);
         );
 
         if (!estoque || estoque.quantidade_reservada < item.quantidade) {
-          throw new Error(`InconsistÃªncia: Reserva atual Ã© menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
+          throw new Error(`Inconsistência: Reserva atual é menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
         }
 
         const result = await manager.query(
@@ -197,5 +281,3 @@ console.log('CANCELAR:', idPedido, idEmpresa);
     });
   }
 }
-
-

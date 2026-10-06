@@ -1,4 +1,4 @@
-export const SHOPEE_API_PATHS = {
+﻿export const SHOPEE_API_PATHS = {
   AUTH_PARTNER: '/api/v2/shop/auth_partner',
   GET_TOKEN: '/api/v2/auth/token/get',
   REFRESH_TOKEN: '/api/v2/auth/access_token/get',
@@ -10,7 +10,7 @@ export const SHOPEE_API_PATHS = {
 export const SHOPEE_STATUS_MAP: Record<string, string> = {
   UNPAID: 'Pendente',
   READY_TO_SHIP: 'Aprovado',
-  PROCESSED: 'EM_SEPARACAO', // Em separação
+  PROCESSED: 'EM_SEPARACAO', // Em separaÃ§Ã£o
   SHIPPED: 'Despachado',
   COMPLETED: 'Entregue',
   IN_CANCEL: 'Cancelado',
@@ -18,4 +18,5 @@ export const SHOPEE_STATUS_MAP: Record<string, string> = {
   TO_RETURN: 'Devolvido',
 };
 
-export const SHOPEE_IMPORTABLE_STATUSES = ['READY_TO_SHIP', 'PROCESSED']; // Apenas pedidos aprovados que comprometem estoque. UNPAID não deve gerar reserva ainda.
+ // Apenas pedidos aprovados que comprometem estoque. UNPAID nÃ£o deve gerar reserva ainda.
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,14 +47,14 @@ export function IntegracoesTab() {
 
     if (status === 'success') {
       toast({
-        title: 'Conexão realizada',
-        description: `Integração com ${provider} concluída com sucesso.`,
+        title: 'ConexÃ£o realizada',
+        description: `IntegraÃ§Ã£o com ${provider} concluÃ­da com sucesso.`,
       });
       setSearchParams(new URLSearchParams());
     } else if (status === 'error') {
       toast({
         variant: 'destructive',
-        title: 'Falha na conexão',
+        title: 'Falha na conexÃ£o',
         description: `Erro ao conectar ${provider}: ${msg || 'Desconhecido'}`,
       });
       setSearchParams(new URLSearchParams());
@@ -81,7 +81,25 @@ export function IntegracoesTab() {
       toast({
         variant: 'destructive',
         title: 'Erro de infraestrutura',
-        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao solicitar URL de autorização.'
+        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao solicitar URL de autorizaÃ§Ã£o.'
+      });
+    }
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/api/v1/integracoes/${id}/sync`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Sincronização concluída', description: `Importados: ${data.imported} | Ignorados/Dups: ${data.duplicates} | Falhas: ${data.failed}` });
+      queryClient.invalidateQueries({ queryKey: ['integracoes'] });
+    },
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sincronizar',
+        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha na sincronização.'
       });
     }
   });
@@ -98,7 +116,7 @@ export function IntegracoesTab() {
       toast({
         variant: 'destructive',
         title: 'Erro ao desconectar',
-        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao processar operação.'
+        description: (axios.isAxiosError(error) ? error.response?.data?.message : 'Falha desconhecida') || 'Falha ao processar operaÃ§Ã£o.'
       });
     }
   });
@@ -107,7 +125,7 @@ export function IntegracoesTab() {
     if (status === 'DESCONECTADO') return <Badge variant="secondary"><Unplug className="mr-1 h-3 w-3"/> Desconectado</Badge>;
     if (status === 'PENDENTE') return <Badge variant="outline" className="text-yellow-600"><RefreshCcw className="mr-1 h-3 w-3 animate-spin"/> Pendente</Badge>;
     if (health === 'OK') return <Badge className="bg-emerald-500 hover:bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3"/> Conectado</Badge>;
-    if (health === 'ATENCAO') return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3"/> Expirado/Requer Atenção</Badge>;
+    if (health === 'ATENCAO') return <Badge variant="destructive"><AlertTriangle className="mr-1 h-3 w-3"/> Expirado/Requer AtenÃ§Ã£o</Badge>;
     return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3"/> Erro</Badge>;
   };
 
@@ -134,14 +152,28 @@ export function IntegracoesTab() {
                   {connectedInstances.map((inst) => (
                     <div key={inst.id} className="border rounded-md p-3 text-sm flex flex-col space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium truncate pr-2" title={inst.externalAccountName || 'Conta Padrão'}>
-                          {inst.externalAccountName || 'Conta Padrão'}
+                        <span className="font-medium truncate pr-2" title={inst.externalAccountName || 'Conta PadrÃ£o'}>
+                          {inst.externalAccountName || 'Conta PadrÃ£o'}
                         </span>
                         {getStatusBadge(inst.status, inst.health)}
                       </div>
                       
                       <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs text-muted-foreground">ID: {inst.externalAccountId || 'N/A'}</span>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-muted-foreground">ID: {inst.externalAccountId || 'N/A'}</span>
+                          <span className="text-[10px] text-muted-foreground">Sincronizado: {inst.lastSyncAt ? new Date(inst.lastSyncAt).toLocaleString() : 'Nunca'}</span>
+                          <span className="text-[10px] text-muted-foreground">Último Sucesso: {inst.lastSuccessAt ? new Date(inst.lastSuccessAt).toLocaleString() : 'N/A'}</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-xs px-2 mr-2"
+                          disabled={inst.status === 'DESCONECTADO' || syncMutation.isPending}
+                          onClick={() => syncMutation.mutate(inst.id)}
+                        >
+                          {syncMutation.isPending && syncMutation.variables === inst.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin"/> : <RefreshCcw className="mr-1 h-3 w-3"/>}
+                          Sincronizar
+                        </Button>
                         <Button 
                           variant="destructive" 
                           size="sm" 
@@ -173,7 +205,7 @@ export function IntegracoesTab() {
                 ) : (
                   <Plus className="mr-2 h-4 w-4" />
                 )}
-                {p.active ? 'Nova Conexão Segura' : 'Em breve'}
+                {p.active ? 'Nova ConexÃ£o Segura' : 'Em breve'}
               </Button>
             </CardFooter>
           </Card>
@@ -182,3 +214,7 @@ export function IntegracoesTab() {
     </div>
   );
 }
+
+
+
+

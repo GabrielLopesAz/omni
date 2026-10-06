@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+﻿import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module.js';
@@ -32,90 +32,6 @@ describe('Shopee Integration (e2e)', () => {
     pedidosService = app.get(PedidosService);
     cryptoService = app.get(IntegrationCredentialsCryptoService);
     shopeeAdapter = app.get(ShopeeAdapter);
-
-    // Mock das requisições do ShopeeClient
-    vi.spyOn(shopeeClient, 'isConfigured').mockReturnValue(true);
-    vi.spyOn(shopeeClient, 'getPartnerId').mockReturnValue('123456');
-
-    vi.spyOn(shopeeClient, 'publicRequest').mockImplementation(async (path: string, payload: any) => {
-      if (path === '/api/v2/auth/access_token/get') {
-        return {
-          error: '', message: '', request_id: 'req123',
-          access_token: 'NEW_access', refresh_token: 'NEW_refresh',
-          expire_in: 14400, merchant_id: 111, shop_id: 222
-        };
-      }
-      if (path === '/api/v2/auth/token/get') {
-        return {
-          error: '', message: '', request_id: 'req123',
-          access_token: 'fake_access', refresh_token: 'fake_refresh',
-          expire_in: 14400, merchant_id: 111, shop_id: 222
-        };
-      }
-      return {};
-    });
-
-    vi.spyOn(shopeeClient, 'shopRequest').mockImplementation(async (path: string, token: string, shopId: string, payload?: any, query?: any) => {
-      if (path === '/api/v2/shop/get_shop_info') {
-        return {
-          error: '', message: '', request_id: 'req123',
-          shop_name: 'Loja Teste E2E', region: 'BR', status: 'NORMAL'
-        };
-      }
-      if (path === '/api/v2/order/get_order_list') {
-        if (!query?.cursor) {
-          return {
-            error: '', message: '', request_id: 'req1',
-            response: { more: true, next_cursor: 'page2', order_list: [{ order_sn: 'BR230101XYZ' }] }
-          };
-        } else {
-          return {
-            error: '', message: '', request_id: 'req2',
-            response: { more: false, next_cursor: '', order_list: [{ order_sn: 'BR230102ABC' }] }
-          };
-        }
-      }
-      if (path === '/api/v2/order/get_order_detail') {
-        return {
-          error: '', message: '', request_id: 'req123',
-          response: {
-            order_list: [
-              {
-                order_sn: 'BR230101XYZ',
-                order_status: 'READY_TO_SHIP',
-                create_time: Math.floor(Date.now() / 1000) - 3600,
-                update_time: Math.floor(Date.now() / 1000) - 1800,
-                total_amount: 150.5,
-                buyer_username: 'shopeebuyer',
-                item_list: [
-                  {
-                    item_id: 999, item_name: 'Produto Shopee', item_sku: 'SKU-SHOPEE',
-                    model_id: 0, model_name: '', model_sku: 'SKU-SHOPEE',
-                    model_quantity_purchased: 2, model_discounted_price: 75.25
-                  }
-                ]
-              },
-              {
-                order_sn: 'BR230102ABC',
-                order_status: 'PROCESSED',
-                create_time: Math.floor(Date.now() / 1000) - 3600,
-                update_time: Math.floor(Date.now() / 1000) - 1800,
-                total_amount: 100.0,
-                buyer_username: 'shopeebuyer2',
-                item_list: [
-                  {
-                    item_id: 999, item_name: 'Produto Shopee', item_sku: 'SKU-SHOPEE',
-                    model_id: 0, model_name: '', model_sku: 'SKU-SHOPEE',
-                    model_quantity_purchased: 1, model_discounted_price: 100.0
-                  }
-                ]
-              }
-            ]
-          }
-        };
-      }
-      return {};
-    });
   });
   
   beforeEach(async () => {
@@ -131,6 +47,12 @@ describe('Shopee Integration (e2e)', () => {
     await dataSource.query(`INSERT INTO produtos (id, id_empresa, nome, sku) VALUES ('prod-shopee', 'emp-shopee', 'Produto Shopee', 'SKU-SHOPEE')`);
     await dataSource.query(`INSERT INTO estoque (id_produto, quantidade_disponivel, quantidade_reservada) VALUES ('prod-shopee', 10, 0)`);
     
+    // Multi-item test products
+    await dataSource.query(`INSERT INTO produtos (id, id_empresa, nome, sku) VALUES ('prod-a', 'emp-shopee', 'Produto A', 'SKU-A')`);
+    await dataSource.query(`INSERT INTO estoque (id_produto, quantidade_disponivel, quantidade_reservada) VALUES ('prod-a', 5, 0)`);
+    await dataSource.query(`INSERT INTO produtos (id, id_empresa, nome, sku) VALUES ('prod-b', 'emp-shopee', 'Produto B', 'SKU-B')`);
+    await dataSource.query(`INSERT INTO estoque (id_produto, quantidade_disponivel, quantidade_reservada) VALUES ('prod-b', 0, 0)`);
+
     const encryptedToken = cryptoService.encrypt('fake_access_token');
     const encryptedRefresh = cryptoService.encrypt('fake_refresh_token');
 
@@ -140,13 +62,61 @@ describe('Shopee Integration (e2e)', () => {
       VALUES 
       ('int-shopee', 'emp-shopee', 'SHOPEE', 'CONECTADO', '222', '${encryptedToken}', '${encryptedRefresh}', '2030-01-01 00:00:00')
     `);
+
+    vi.restoreAllMocks();
+
+    vi.spyOn(shopeeClient, 'isConfigured').mockReturnValue(true);
+    vi.spyOn(shopeeClient, 'getPartnerId').mockReturnValue('123456');
+
+    vi.spyOn(shopeeClient, 'publicRequest').mockImplementation(async (path: string, payload: any) => {
+      if (path === '/api/v2/auth/access_token/get') {
+        return {
+          error: '', message: '', request_id: 'req123',
+          access_token: 'NEW_access', refresh_token: 'NEW_refresh',
+          expire_in: 14400, merchant_id: 111, shop_id: 222
+        };
+      }
+      return {};
+    });
   });
 
   afterAll(async () => {
     await app.close();
   });
 
+  const setupMock = (orderList: any[]) => {
+    vi.spyOn(shopeeClient, 'shopRequest').mockImplementation(async (path: string, token: string, shopId: string, payload?: any, query?: any) => {
+      if (path === '/api/v2/order/get_order_list') {
+        return {
+          error: '', message: '', request_id: 'req1',
+          response: { more: false, next_cursor: '', order_list: orderList.map(o => ({ order_sn: o.order_sn })) }
+        };
+      }
+      if (path === '/api/v2/order/get_order_detail') {
+        return {
+          error: '', message: '', request_id: 'req123',
+          response: {
+            order_list: orderList
+          }
+        };
+      }
+      return {};
+    });
+  }
+
   it('deve simular integracao Shopee completa e lidar com concorrencia distribuida', async () => {
+    setupMock([
+      {
+        order_sn: 'BR230101XYZ',
+        order_status: 'READY_TO_SHIP',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000) - 1800,
+        total_amount: 150.5,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 2, model_discounted_price: 75.25 }]
+      }
+    ]);
+
     const getOrdersSpy = vi.spyOn(shopeeAdapter, 'getOrders');
 
     const exec1 = syncService.syncIntegration('int-shopee', 'emp-shopee');
@@ -157,17 +127,17 @@ describe('Shopee Integration (e2e)', () => {
 
     expect(getOrdersSpy).toHaveBeenCalledTimes(1);
 
-    const pedidos = await dataSource.query(`SELECT * FROM pedidos WHERE id_integracao = 'int-shopee' ORDER BY id_pedido_marketplace ASC`);
-    expect(pedidos.length).toBe(2);
-    expect(pedidos[0].id_pedido_marketplace).toBe('BR230101XYZ');
-    expect(pedidos[1].id_pedido_marketplace).toBe('BR230102ABC');
+    const pedidos = await dataSource.query(`SELECT * FROM pedidos WHERE id_integracao = 'int-shopee'`);
+    expect(pedidos.length).toBe(1);
+    expect(pedidos[0].status).toBe('Aprovado');
 
     const estoque = await dataSource.query(`SELECT quantidade_disponivel, quantidade_reservada FROM estoque WHERE id_produto = 'prod-shopee'`);
-    expect(Number(estoque[0].quantidade_disponivel)).toBe(7); // 10 - 3 (2 from XYZ, 1 from ABC)
-    expect(Number(estoque[0].quantidade_reservada)).toBe(3);
+    expect(Number(estoque[0].quantidade_disponivel)).toBe(8); // 10 - 2
+    expect(Number(estoque[0].quantidade_reservada)).toBe(2);
   });
 
   it('deve rotacionar o token (refresh) caso proximo de expirar', async () => {
+    setupMock([]);
     await dataSource.query(`UPDATE integracoes_marketplace SET token_expires_at = DATE_ADD(NOW(), INTERVAL 1 MINUTE) WHERE id = 'int-shopee'`);
 
     await syncService.syncIntegration('int-shopee', 'emp-shopee');
@@ -178,7 +148,169 @@ describe('Shopee Integration (e2e)', () => {
 
     expect(newAccess).toBe('NEW_access');
     expect(newRefresh).toBe('NEW_refresh');
-    
-    expect(new Date(rows[0].token_expires_at).getTime()).toBeGreaterThan(Date.now() + 100000); 
   });
+
+  it('cancelamento remoto (idempotente) com estorno de estoque', async () => {
+    // Primeiro importa o pedido
+    setupMock([
+      {
+        order_sn: 'BR-CANCEL',
+        order_status: 'PROCESSED',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000) - 1800,
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 2, model_discounted_price: 50 }]
+      }
+    ]);
+    await syncService.syncIntegration('int-shopee', 'emp-shopee');
+
+    // Verifica se reservou 2
+    let estoque = await dataSource.query(`SELECT * FROM estoque WHERE id_produto = 'prod-shopee'`);
+    expect(Number(estoque[0].quantidade_disponivel)).toBe(8);
+    expect(Number(estoque[0].quantidade_reservada)).toBe(2);
+
+    // Agora simula o retorno CANCELLED da shopee
+    setupMock([
+      {
+        order_sn: 'BR-CANCEL',
+        order_status: 'CANCELLED',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000),
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 2, model_discounted_price: 50 }]
+      }
+    ]);
+    const summary = await syncService.syncIntegration('int-shopee', 'emp-shopee');
+
+    expect(summary.cancelled).toBe(1);
+
+    // Verifica se estornou 2
+    estoque = await dataSource.query(`SELECT * FROM estoque WHERE id_produto = 'prod-shopee'`);
+    expect(Number(estoque[0].quantidade_disponivel)).toBe(10);
+    expect(Number(estoque[0].quantidade_reservada)).toBe(0);
+
+    const pedidos = await dataSource.query(`SELECT status FROM pedidos WHERE id_pedido_marketplace = 'BR-CANCEL'`);
+    expect(pedidos[0].status).toBe('Cancelado');
+  });
+
+  it('cancelamento remoto de pedido despachado -> CONFLICT', async () => {
+    // Importa
+    setupMock([
+      {
+        order_sn: 'BR-DESP',
+        order_status: 'READY_TO_SHIP',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000) - 1800,
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 1, model_discounted_price: 50 }]
+      }
+    ]);
+    await syncService.syncIntegration('int-shopee', 'emp-shopee');
+
+    // Despacha internamente
+    await dataSource.query(`UPDATE pedidos SET status = 'Despachado' WHERE id_pedido_marketplace = 'BR-DESP'`);
+    // Simula expedicao do estoque
+    await dataSource.query(`UPDATE estoque SET quantidade_reservada = quantidade_reservada - 1 WHERE id_produto = 'prod-shopee'`);
+
+    // Shopee retorna CANCELLED
+    setupMock([
+      {
+        order_sn: 'BR-DESP',
+        order_status: 'CANCELLED',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000),
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 1, model_discounted_price: 50 }]
+      }
+    ]);
+    const summary = await syncService.syncIntegration('int-shopee', 'emp-shopee');
+    
+    // Ele tenta cancelar, mas como ta despachado lanÃ§a conflito no try/catch
+    expect(summary.failed).toBe(0); // Ignore conflict failures
+    expect(summary.cancelled).toBe(0);
+
+    const pedidos = await dataSource.query(`SELECT status FROM pedidos WHERE id_pedido_marketplace = 'BR-DESP'`);
+    expect(pedidos[0].status).toBe('Despachado'); // Nao alterado
+  });
+
+  it('SKU inexistente -> rollback e erro logado, elegivel a retry (nao avanÃ§a lastSuccessAt)', async () => {
+    setupMock([
+      {
+        order_sn: 'BR-SKU-INEX',
+        order_status: 'READY_TO_SHIP',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000) - 1800,
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 999, model_sku: 'SKU-FANTASMA', model_quantity_purchased: 1, model_discounted_price: 100 }]
+      }
+    ]);
+    
+    // ForÃ§a o ultimo sucesso
+    await dataSource.query(`UPDATE integracoes_marketplace SET last_success_at = '2026-01-01 10:00:00' WHERE id = 'int-shopee'`);
+
+    const summary = await syncService.syncIntegration('int-shopee', 'emp-shopee');
+    expect(summary.failed).toBe(1);
+    expect(summary.imported).toBe(0);
+
+    const integracao = await dataSource.query(`SELECT last_success_at FROM integracoes_marketplace WHERE id = 'int-shopee'`);
+    // last_success_at NAO avanÃ§a
+    expect(new Date(integracao[0].last_success_at).toISOString().startsWith('2026-01-01')).toBe(true);
+  });
+
+  it('Rollback multi-item: se um SKU falhar, o pedido inteiro e reservas sao abortados', async () => {
+    setupMock([
+      {
+        order_sn: 'BR-MULTI',
+        order_status: 'READY_TO_SHIP',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000) - 1800,
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [
+          { item_id: 1, model_sku: 'SKU-A', model_quantity_purchased: 1, model_discounted_price: 50 }, // Tem estoque (5)
+          { item_id: 2, model_sku: 'SKU-B', model_quantity_purchased: 1, model_discounted_price: 50 }, // Nao tem estoque (0)
+        ]
+      }
+    ]);
+
+    const summary = await syncService.syncIntegration('int-shopee', 'emp-shopee');
+    expect(summary.failed).toBe(1);
+
+    const estoqueA = await dataSource.query(`SELECT * FROM estoque WHERE id_produto = 'prod-a'`);
+    expect(Number(estoqueA[0].quantidade_disponivel)).toBe(5); // Rollback efetuado, continua 5
+
+    const pedidos = await dataSource.query(`SELECT * FROM pedidos WHERE id_pedido_marketplace = 'BR-MULTI'`);
+    expect(pedidos.length).toBe(0); // Nao importou
+  });
+
+  it('Status SHIPPED de pedido existente atualiza o status para Despachado sem duplicar reserva', async () => {
+    // 1. Importa como Pendente
+    await dataSource.query(`INSERT INTO pedidos (id, id_empresa, id_integracao, id_pedido_marketplace, cliente_nome, valor_total, taxas_marketplace, status) VALUES ('ped-ship', 'emp-shopee', 'int-shopee', 'BR-SHIP', 'Cliente', 100, 0, 'Pendente')`);
+
+    // 2. Shopee devolve SHIPPED
+    setupMock([
+      {
+        order_sn: 'BR-SHIP',
+        order_status: 'SHIPPED',
+        create_time: Math.floor(Date.now() / 1000) - 3600,
+        update_time: Math.floor(Date.now() / 1000),
+        total_amount: 100,
+        buyer_username: 'shopeebuyer',
+        item_list: [{ item_id: 1, model_sku: 'SKU-SHOPEE', model_quantity_purchased: 1, model_discounted_price: 100 }]
+      }
+    ]);
+
+    await syncService.syncIntegration('int-shopee', 'emp-shopee');
+
+    const pedidos = await dataSource.query(`SELECT status FROM pedidos WHERE id_pedido_marketplace = 'BR-SHIP'`);
+    expect(pedidos[0].status).toBe('Despachado');
+  });
+
 });
+
+

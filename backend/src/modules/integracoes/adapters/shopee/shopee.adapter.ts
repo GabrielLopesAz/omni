@@ -1,9 +1,10 @@
 ﻿import { Injectable, Logger } from '@nestjs/common';
 import { IMarketplaceAdapter, AuthorizationContext, MarketplaceCredentials, MarketplaceAuthorizationCallback, NormalizedMarketplaceOrder } from '../marketplace-adapter.interface.js';
 import { ShopeeClient } from './shopee-client.js';
-import { SHOPEE_API_PATHS, SHOPEE_IMPORTABLE_STATUSES } from './shopee.constants.js';
+import { SHOPEE_API_PATHS } from './shopee.constants.js';
 import { ShopeeShopInfoResponse, ShopeeTokenResponse, ShopeeOrderListResponse, ShopeeOrderDetailResponse } from './shopee.types.js';
 import { ShopeeMapper } from './shopee.mapper.js';
+import { sanitizeExternalError } from '../../../../shared/utils/error-sanitizer.util.js';
 
 @Injectable()
 export class ShopeeAdapter implements IMarketplaceAdapter {
@@ -18,8 +19,6 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
     if (!this.shopeeClient.isConfigured()) {
       throw new Error('Shopee provider is not configured. Missing Partner ID or Key.');
     }
-    // We append the state into our redirect URL so that it returns back properly
-    // Shopee API will redirect to this URI with ?code=XXX&shop_id=YYY&redirect_uri=...
     const baseRedirect = process.env.SHOPEE_REDIRECT_URI || 'http://localhost:3000/api/v1/integracoes/SHOPEE/callback';
     const redirectUri = `${baseRedirect}?state=${context.state}`;
 
@@ -64,7 +63,6 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
       externalAccountId: shopId,
     };
 
-    // Identificar a loja (Shop Name)
     try {
       const shopInfo = await this.shopeeClient.shopRequest<ShopeeShopInfoResponse>(
         SHOPEE_API_PATHS.GET_SHOP_INFO,
@@ -75,8 +73,8 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
         (credentials as MarketplaceCredentials).externalAccountName = shopInfo.shop_name;
       }
     } catch (e: any) {
-      this.logger.error(`NÃ£o foi possÃ­vel obter os dados da loja: ${e.message}`);
-      throw new Error(`IntegraÃ§Ã£o falhou ao validar shop_id. Detalhes: ${e.message}`);
+      this.logger.error(`NÃ£o foi possÃ­vel obter os dados da loja: ${sanitizeExternalError(e)}`);
+      throw new Error(`IntegraÃ§Ã£o falhou ao validar shop_id. Detalhes: ${sanitizeExternalError(e)}`);
     }
 
     return credentials;
@@ -113,8 +111,6 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
   }
 
   async revokeAuthorization(credentials: MarketplaceCredentials): Promise<void> {
-    // Shopee doesn't have an explicit revoke token API, or it's not strictly documented in a standard way to be called during disconnect.
-    // OMNI will just clear the credentials on its side.
     return Promise.resolve();
   }
 
@@ -125,7 +121,6 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
     let hasMore = true;
     const orderSns: string[] = [];
 
-    // PaginaÃ§Ã£o para pegar os order_sn
     while (hasMore) {
       const searchParams: any = {
         time_range_field: 'update_time',
@@ -141,7 +136,7 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
         SHOPEE_API_PATHS.GET_ORDER_LIST,
         credentials.accessToken,
         credentials.externalAccountId,
-        {}, // payload Vazio pois Ã© GET
+        {},
         searchParams
       );
 
@@ -155,10 +150,8 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
 
     if (orderSns.length === 0) return [];
 
-    // Fetch batch order details (Shopee limit is usually 50 per batch)
     const orderDetails: NormalizedMarketplaceOrder[] = [];
     
-    // Split in chunks of 50
     for (let i = 0; i < orderSns.length; i += 50) {
       const batchSns = orderSns.slice(i, i + 50);
       
@@ -177,15 +170,11 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
 
       if (detailResponse.response?.order_list) {
         for (const rawOrder of detailResponse.response.order_list) {
-          // Filtrar por status importaveis (aqueles que reservam estoque)
-          if (SHOPEE_IMPORTABLE_STATUSES.includes(rawOrder.order_status)) {
-            try {
-              const normalized = ShopeeMapper.toNormalizedOrder(rawOrder);
-              orderDetails.push(normalized);
-            } catch (err: any) {
-              this.logger.warn(`Ignorando pedido ${rawOrder.order_sn} da importaÃ§Ã£o. Motivo: ${err.message}`);
-              // Continua com outros pedidos
-            }
+          try {
+            const normalized = ShopeeMapper.toNormalizedOrder(rawOrder);
+            orderDetails.push(normalized);
+          } catch (err: any) {
+            this.logger.warn(`Ignorando pedido ${rawOrder.order_sn} da importaÃ§Ã£o. Motivo: ${sanitizeExternalError(err)}`);
           }
         }
       }
