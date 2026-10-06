@@ -288,11 +288,9 @@ describe('Shopee Integration (e2e)', () => {
     expect(pedidos.length).toBe(0); // Nao importou
   });
 
-  it('Status SHIPPED de pedido existente atualiza o status para Despachado sem duplicar reserva', async () => {
-    // 1. Importa como Pendente
+  it('Status SHIPPED de pedido Pendente registra conflito e não altera o status', async () => {
     await dataSource.query(`INSERT INTO pedidos (id, id_empresa, id_integracao, id_pedido_marketplace, cliente_nome, valor_total, taxas_marketplace, status) VALUES ('ped-ship', 'emp-shopee', 'int-shopee', 'BR-SHIP', 'Cliente', 100, 0, 'Pendente')`);
 
-    // 2. Shopee devolve SHIPPED
     setupMock([
       {
         order_sn: 'BR-SHIP',
@@ -305,12 +303,17 @@ describe('Shopee Integration (e2e)', () => {
       }
     ]);
 
-    await syncService.syncIntegration('int-shopee', 'emp-shopee');
+    const summary = await syncService.syncIntegration('int-shopee', 'emp-shopee');
+    expect(summary.conflicts).toBe(1);
 
     const pedidos = await dataSource.query(`SELECT status FROM pedidos WHERE id_pedido_marketplace = 'BR-SHIP'`);
-    expect(pedidos[0].status).toBe('Despachado');
+    expect(pedidos[0].status).toBe('Pendente');
+
+    const auditoria = await dataSource.query(`SELECT * FROM auditoria_logs WHERE acao = 'MARKETPLACE_STATUS_CONFLICT'`);
+    expect(auditoria.length).toBeGreaterThan(0);
   });
 
 });
+
 
 

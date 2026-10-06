@@ -6,6 +6,7 @@ import { IntegracaoMarketplace } from '../entities/integracao-marketplace.entity
 import { IntegracoesService } from '../integracoes.service.js';
 import { MarketplaceAdapterRegistry } from '../adapters/adapter.registry.js';
 import { PedidosService } from '../../pedidos/pedidos.service.js';
+import { AuditoriaService } from '../../auditoria/auditoria.service.js';
 import * as crypto from 'crypto';
 
 export interface SyncSummary {
@@ -14,6 +15,7 @@ export interface SyncSummary {
   duplicates: number;
   cancelled: number;
   failed: number;
+  conflicts: number;
 }
 
 @Injectable()
@@ -27,10 +29,11 @@ export class MarketplaceSyncService {
     private readonly integracoesService: IntegracoesService,
     private readonly adapterRegistry: MarketplaceAdapterRegistry,
     private readonly pedidosService: PedidosService,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   async syncIntegration(idIntegracao: string, idEmpresa: string): Promise<SyncSummary> {
-    const summary: SyncSummary = { fetched: 0, imported: 0, duplicates: 0, cancelled: 0, failed: 0 };
+    const summary: SyncSummary = { fetched: 0, imported: 0, duplicates: 0, cancelled: 0, failed: 0, conflicts: 0 };
     const lockKey = `${idEmpresa}:${idIntegracao}`;
     
     if (this.runningSyncs.has(lockKey)) {
@@ -89,8 +92,15 @@ export class MarketplaceSyncService {
 
       for (const order of orders) {
         try {
+          if (order.action === 'ERROR') {
+            this.logger.warn(`Falha pre-processamento pedido : `);
+            errorCount++;
+            summary.failed++;
+            continue;
+          }
+
           if (order.action === 'IMPORT') {
-            await this.pedidosService.importarPedidoMarketplace(
+            const importRes = await this.pedidosService.importarPedidoMarketplace(
               idIntegracao,
               idEmpresa,
               {
@@ -106,19 +116,40 @@ export class MarketplaceSyncService {
                 precoUnitario: item.unitPrice
               }))
             );
-            summary.imported++;
+            if (importRes === 'IMPORTED') summary.imported++;
+            else if (importRes === 'DUPLICATE') summary.duplicates++;
           } else if (order.action === 'CANCEL') {
             await this.pedidosService.cancelarPedidoMarketplace(idIntegracao, idEmpresa, order.externalOrderId);
             summary.cancelled++;
           } else if (order.action === 'UPDATE_STATUS' || order.action === 'CONFLICT') {
-             await this.pedidosService.atualizarStatusMarketplace(idIntegracao, idEmpresa, order.externalOrderId, order.externalStatus, order.action);
+             const updateRes = await this.pedidosService.atualizarStatusMarketplace(idIntegracao, idEmpresa, order.externalOrderId, order.externalStatus, order.action);
+             if (updateRes === 'CONFLICT') {
+               summary.conflicts++;
+               await this.auditoriaService.logAction(
+                 'MARKETPLACE_STATUS_CONFLICT',
+                 null,
+                 undefined,
+                 'pedidos',
+                 null,
+                 { integrationId: idIntegracao, externalOrderId: order.externalOrderId, externalStatus: order.externalStatus, provider: integracao.provider }
+               );
+             }
           }
         } catch (importErr: any) {
           const errMsg = sanitizeExternalError(importErr);
           if (errMsg.includes('CONFLICT')) {
-             this.logger.warn(`Conflito ao atualizar pedido ${order.externalOrderId}: ${errMsg}`);
+             this.logger.warn(`Conflito ao atualizar pedido : `);
+             summary.conflicts++;
+             await this.auditoriaService.logAction(
+                 'MARKETPLACE_STATUS_CONFLICT',
+                 null,
+                 undefined,
+                 'pedidos',
+                 null,
+                 { integrationId: idIntegracao, externalOrderId: order.externalOrderId, externalStatus: order.externalStatus, provider: integracao.provider, details: errMsg }
+             );
           } else {
-             this.logger.warn(`Falha ao processar pedido ${order.externalOrderId} da integracao ${idIntegracao}: ${errMsg}`);
+             this.logger.warn(`Falha ao processar pedido  da integracao : `);
              errorCount++;
              summary.failed++;
           }
@@ -180,5 +211,10 @@ export class MarketplaceSyncService {
     await this.integracaoRepo.save(integracao);
   }
 }
+
+
+
+
+
 
 

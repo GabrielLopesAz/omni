@@ -174,7 +174,18 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
             const normalized = ShopeeMapper.toNormalizedOrder(rawOrder);
             orderDetails.push(normalized);
           } catch (err: any) {
-            this.logger.warn(`Ignorando pedido ${rawOrder.order_sn} da importaÃ§Ã£o. Motivo: ${sanitizeExternalError(err)}`);
+            this.logger.warn(`Falha ao mapear pedido ${rawOrder.order_sn}. Motivo: ${sanitizeExternalError(err)}`);
+            orderDetails.push({
+              externalOrderId: rawOrder.order_sn,
+              externalStatus: rawOrder.order_status,
+              action: 'ERROR',
+              processingError: sanitizeExternalError(err),
+              customerName: rawOrder.buyer_username || 'Desconhecido',
+              totalValue: Number(rawOrder.total_amount) || 0,
+              items: [],
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
           }
         }
       }
@@ -183,4 +194,8 @@ export class ShopeeAdapter implements IMarketplaceAdapter {
     return orderDetails;
   }
 }
+
+
+
+
 

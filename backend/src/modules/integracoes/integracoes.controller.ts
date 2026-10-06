@@ -90,9 +90,16 @@ export class IntegracoesController {
     const idEmpresa = req.user?.empresaId;
     if (!idEmpresa) throw new UnauthorizedException();
 
+    const ints = await this.integracoesService.listar(idEmpresa);
+    if (!ints.some(i => i.id === id)) {
+      throw new NotFoundException('Integracao nao encontrada ou pertence a outra empresa.');
+    }
+
     const result = await this.syncService.syncIntegration(id, idEmpresa);
     return result;
   }
 }
+
+
 
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity.js';
@@ -46,7 +46,7 @@ export class PedidosService {
     });
 
     if (!pedido) {
-      throw new NotFoundException('Pedido não encontrado');
+      throw new NotFoundException('Pedido nÃ£o encontrado');
     }
 
     const itens = await this.itemPedidoRepo.find({
@@ -72,13 +72,13 @@ export class PedidosService {
 
     for (const item of itens) {
       if (!item.sku || item.sku.trim() === '') {
-        throw new Error('SKU inválido ou vazio');
+        throw new Error('SKU invÃ¡lido ou vazio');
       }
       if (!Number.isInteger(item.quantidade) || item.quantidade <= 0) {
-        throw new Error(`Quantidade inválida para o SKU ${item.sku}`);
+        throw new Error(`Quantidade invÃ¡lida para o SKU ${item.sku}`);
       }
       if (typeof item.precoUnitario !== 'number' || item.precoUnitario < 0) {
-        throw new Error(`Preço unitário inválido para o SKU ${item.sku}`);
+        throw new Error(`PreÃ§o unitÃ¡rio invÃ¡lido para o SKU ${item.sku}`);
       }
       mapItens.push({ ...item });
     }
@@ -109,7 +109,7 @@ export class PedidosService {
           );
 
           if (!produto) {
-            throw new Error(`Produto não encontrado para o SKU ${item.sku}`);
+            throw new Error(`Produto nÃ£o encontrado para o SKU ${item.sku}`);
           }
           item.idProduto = produto.id; 
         }
@@ -171,7 +171,7 @@ export class PedidosService {
       });
       
       if (!pedido) {
-        return; // Idempotent or doesn't exist yet
+        return 'DUPLICATE'; // Idempotent or doesn't exist yet
       }
 
       if (pedido.status === 'Cancelado') {
@@ -179,7 +179,7 @@ export class PedidosService {
       }
 
       if (pedido.status === 'Despachado') {
-        throw new Error('CONFLICT: Pedido já foi despachado. Não é possível cancelar e estornar estoque.');
+        throw new Error('CONFLICT: Pedido jÃ¡ foi despachado. NÃ£o Ã© possÃ­vel cancelar e estornar estoque.');
       }
 
       const itens = await manager.find(ItemPedido, { where: { idPedido: pedido.id } });
@@ -191,8 +191,8 @@ export class PedidosService {
         );
 
         if (!estoque || estoque.quantidade_reservada < item.quantidade) {
-          // Apenas ignore e faça estorno parcial ou log warning, mas para simplificar lançamos erro de integridade
-          throw new Error(`Inconsistência: Reserva atual é menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
+          // Apenas ignore e faÃ§a estorno parcial ou log warning, mas para simplificar lanÃ§amos erro de integridade
+          throw new Error(`InconsistÃªncia: Reserva atual Ã© menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
         }
 
         const result = await manager.query(
@@ -213,25 +213,31 @@ export class PedidosService {
     });
   }
 
-  async atualizarStatusMarketplace(idIntegracao: string, idEmpresa: string, idPedidoMarketplace: string, externalStatus: string, action: string): Promise<void> {
-    await this.pedidoRepo.manager.transaction(async (manager) => {
+  async atualizarStatusMarketplace(idIntegracao: string, idEmpresa: string, idPedidoMarketplace: string, externalStatus: string, action: string): Promise<'UPDATED' | 'IGNORED' | 'CONFLICT'> {
+    return await this.pedidoRepo.manager.transaction(async (manager) => {
       const pedido = await manager.findOne(Pedido, { 
         where: { idIntegracao, idPedidoMarketplace, idEmpresa },
         lock: { mode: 'pessimistic_write' }
       });
 
-      if (!pedido) return; // ignore updates for orders that don't exist
-
-      // Only allow safe internal state transitions based on external status
-      if (pedido.status === 'Cancelado' || pedido.status === 'Despachado' || pedido.status === 'Entregue') {
-         return; // internal final states take precedence over external non-cancel updates
-      }
+      if (!pedido) return 'IGNORED';
 
       if (action === 'UPDATE_STATUS') {
-        if (externalStatus === 'SHIPPED') pedido.status = 'Despachado';
-        else if (externalStatus === 'COMPLETED') pedido.status = 'Entregue';
-        await manager.save(Pedido, pedido);
+        if (externalStatus === 'SHIPPED') {
+          if (pedido.status === 'Despachado') return 'IGNORED';
+          return 'CONFLICT';
+        } else if (externalStatus === 'COMPLETED') {
+          if (pedido.status === 'Despachado') {
+            pedido.status = 'Entregue';
+            await manager.save(Pedido, pedido);
+            return 'UPDATED';
+          } else if (pedido.status === 'Entregue') {
+            return 'IGNORED';
+          }
+          return 'CONFLICT';
+        }
       }
+      return 'IGNORED';
     });
   }
 
@@ -240,7 +246,7 @@ export class PedidosService {
       const pedido = await manager.findOne(Pedido, { where: { id: idPedido, idEmpresa }, lock: { mode: 'pessimistic_write' } });
       
       if (!pedido) {
-        throw new NotFoundException('Pedido não encontrado');
+        throw new NotFoundException('Pedido nÃ£o encontrado');
       }
 
       if (pedido.status === 'Cancelado') {
@@ -248,7 +254,7 @@ export class PedidosService {
       }
 
       if (pedido.status === 'Despachado') {
-        throw new Error('CONFLICT: Pedido já foi despachado. Não é possível cancelar e estornar estoque.');
+        throw new Error('CONFLICT: Pedido jÃ¡ foi despachado. NÃ£o Ã© possÃ­vel cancelar e estornar estoque.');
       }
 
       const itens = await manager.find(ItemPedido, { where: { idPedido } });
@@ -260,7 +266,7 @@ export class PedidosService {
         );
 
         if (!estoque || estoque.quantidade_reservada < item.quantidade) {
-          throw new Error(`Inconsistência: Reserva atual é menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
+          throw new Error(`InconsistÃªncia: Reserva atual Ã© menor que a quantidade a devolver para o produto ID ${item.idProduto}`);
         }
 
         const result = await manager.query(
@@ -281,3 +287,4 @@ export class PedidosService {
     });
   }
 }
+

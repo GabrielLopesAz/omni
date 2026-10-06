@@ -20,10 +20,11 @@ export interface MarketplaceAuthorizationCallback {
   externalAccountIdHint?: string;
 }
 
-export type MarketplaceOrderAction = 'IMPORT' | 'CANCEL' | 'UPDATE_STATUS' | 'IGNORE' | 'CONFLICT';
+export type MarketplaceOrderAction = 'IMPORT' | 'CANCEL' | 'UPDATE_STATUS' | 'IGNORE' | 'CONFLICT' | 'ERROR';
 
 export interface NormalizedMarketplaceOrder {
   action: MarketplaceOrderAction;
+  processingError?: string;
   externalOrderId: string;
   externalStatus: string;
   customerName: string | null;
@@ -60,4 +61,6 @@ export interface IMarketplaceAdapter {
   // Data Sync
   getOrders?(credentials: MarketplaceCredentials, timeFrom: Date, timeTo: Date): Promise<NormalizedMarketplaceOrder[]>;
 }
+
+
 
